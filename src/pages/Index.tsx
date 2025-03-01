@@ -9,8 +9,11 @@ import PrizeCustomizer from '@/components/PrizeCustomizer';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
-import { Volume2, VolumeX, Settings } from 'lucide-react';
+import { Volume2, VolumeX, Settings, UserIcon, LogOut, LogIn } from 'lucide-react';
 import { playClickSound } from '@/utils/animations';
+import { supabase } from '@/integrations/supabase/client';
+import { Toaster } from '@/components/ui/toaster';
+import { useToast } from '@/components/ui/use-toast';
 
 const Index = () => {
   const {
@@ -20,6 +23,7 @@ const Index = () => {
     history,
     spinAngle,
     spinDuration,
+    user,
     spin,
     updatePrizes,
     resetHistory
@@ -27,6 +31,7 @@ const Index = () => {
   
   const [showWinAnimation, setShowWinAnimation] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const { toast } = useToast();
   
   // Update win animation state when spin completes
   useEffect(() => {
@@ -66,6 +71,47 @@ const Index = () => {
     }
   };
   
+  const handleLogin = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+      
+      if (error) {
+        toast({
+          title: "Error al iniciar sesión",
+          description: error.message,
+          variant: "destructive"
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error al iniciar sesión",
+        description: error.message || "Ha ocurrido un error inesperado",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      toast({
+        title: "Sesión cerrada",
+        description: "Has cerrado sesión correctamente"
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error al cerrar sesión",
+        description: error.message || "Ha ocurrido un error inesperado",
+        variant: "destructive"
+      });
+    }
+  };
+  
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-secondary/30">
       {/* Enhanced background decorative elements */}
@@ -78,6 +124,32 @@ const Index = () => {
       <Header />
       
       <main className="container px-4 py-8 mx-auto flex-1 relative z-10">
+        {/* Auth button */}
+        <div className="absolute top-0 right-0 z-20">
+          {user ? (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex items-center gap-2"
+              onClick={handleLogout}
+            >
+              <UserIcon className="h-4 w-4" />
+              <span className="hidden md:inline">{user.email}</span>
+              <LogOut className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="flex items-center gap-2"
+              onClick={handleLogin}
+            >
+              <LogIn className="h-4 w-4" />
+              <span>Iniciar sesión</span>
+            </Button>
+          )}
+        </div>
+        
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 xl:gap-12">
           {/* Left sidebar - History */}
           <div className="lg:col-span-1 order-3 lg:order-1">
@@ -125,6 +197,7 @@ const Index = () => {
       </main>
       
       <Footer />
+      <Toaster />
     </div>
   );
 };

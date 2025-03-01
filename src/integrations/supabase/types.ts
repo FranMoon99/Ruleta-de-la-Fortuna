@@ -9,7 +9,86 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      premios: {
+        Row: {
+          activo: boolean | null
+          created_at: string
+          created_by: string | null
+          descripcion: string | null
+          id: string
+          nombre: string
+          probabilidad: number | null
+        }
+        Insert: {
+          activo?: boolean | null
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          id?: string
+          nombre: string
+          probabilidad?: number | null
+        }
+        Update: {
+          activo?: boolean | null
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string | null
+          id?: string
+          nombre?: string
+          probabilidad?: number | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          updated_at: string
+          username: string | null
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          updated_at?: string
+          username?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          updated_at?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
+      resultados: {
+        Row: {
+          fecha: string
+          id: string
+          premio_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          fecha?: string
+          id?: string
+          premio_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          fecha?: string
+          id?: string
+          premio_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resultados_premio_id_fkey"
+            columns: ["premio_id"]
+            isOneToOne: false
+            referencedRelation: "premios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

@@ -1,3 +1,4 @@
+import { supabase } from "@/integrations/supabase/client";
 
 export interface Prize {
   id: string;
@@ -46,11 +47,93 @@ export const calculatePrizeIndex = (angle: number, segmentCount: number): number
   return (segmentCount - 1) - segmentIndex;
 };
 
-export const saveCustomPrizes = (prizes: Prize[]): void => {
+export const saveCustomPrizes = async (prizes: Prize[]): Promise<void> => {
+  // Guardar localmente para uso sin conexión
   localStorage.setItem('roulette-prizes', JSON.stringify(prizes));
+  
+  // Si el usuario está autenticado, sincronizar con Supabase
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if (session?.user) {
+    // Primero limpiar premios existentes (esto requeriría permisos adicionales)
+    // En una implementación más completa, deberíamos actualizar en lugar de borrar/recrear
+    console.log("Sincronizando premios personalizados con Supabase...");
+  }
 };
 
-export const loadCustomPrizes = (): Prize[] | null => {
+export const loadCustomPrizes = async (): Promise<Prize[] | null> => {
+  // Primero intentar cargar desde Supabase si el usuario está autenticado
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if (session?.user) {
+    try {
+      // En una implementación completa, cargaríamos los premios del usuario desde Supabase
+      console.log("Intentando cargar premios personalizados desde Supabase...");
+      // Por ahora, caemos de vuelta al almacenamiento local
+    } catch (error) {
+      console.error("Error cargando premios desde Supabase:", error);
+    }
+  }
+  
+  // Si no hay datos de Supabase o el usuario no está autenticado, usar localStorage
   const saved = localStorage.getItem('roulette-prizes');
   return saved ? JSON.parse(saved) : null;
+};
+
+// Nueva función para guardar un resultado en Supabase
+export const saveSpinResult = async (prizeId: string, userId?: string): Promise<boolean> => {
+  try {
+    // Primero verificar si el usuario está autenticado
+    if (!userId) {
+      const { data: { session } } = await supabase.auth.getSession();
+      userId = session?.user?.id;
+    }
+    
+    // Si hay un usuario autenticado, guardar el resultado
+    if (userId) {
+      const { error } = await supabase.from('resultados').insert({
+        user_id: userId,
+        premio_id: prizeId
+      });
+      
+      if (error) {
+        console.error('Error al guardar el resultado:', error);
+        return false;
+      }
+      return true;
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('Error al guardar el resultado:', error);
+    return false;
+  }
+};
+
+// Nueva función para cargar el historial de resultados
+export const loadSpinHistory = async (): Promise<any[]> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
+      return [];
+    }
+    
+    const { data, error } = await supabase
+      .from('resultados')
+      .select('*, premios(nombre)')
+      .eq('user_id', session.user.id)
+      .order('fecha', { ascending: false })
+      .limit(10);
+    
+    if (error) {
+      console.error('Error al cargar el historial:', error);
+      return [];
+    }
+    
+    return data || [];
+  } catch (error) {
+    console.error('Error al cargar el historial:', error);
+    return [];
+  }
 };
