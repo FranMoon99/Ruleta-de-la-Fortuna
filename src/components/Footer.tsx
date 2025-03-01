@@ -1,10 +1,17 @@
 
 import React from 'react';
+import { HeartIcon } from 'lucide-react';
 
 const Footer: React.FC = () => {
   return (
-    <footer className="w-full py-6 text-center text-muted-foreground text-sm">
-      <p>© {new Date().getFullYear()} Ruleta de la Fortuna. Todos los derechos reservados.</p>
+    <footer className="w-full py-8 text-center text-muted-foreground text-sm relative z-10">
+      <div className="flex items-center justify-center gap-1.5">
+        <p>© {new Date().getFullYear()} Ruleta de la Fortuna.</p>
+        <p className="flex items-center">
+          Hecho con <HeartIcon className="h-4 w-4 mx-1 text-red-500" /> para ti
+        </p>
+      </div>
+      <p className="text-xs mt-1 text-muted-foreground/70">Todos los derechos reservados.</p>
     </footer>
   );
 };

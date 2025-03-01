@@ -92,10 +92,10 @@ const RouletteWheel: React.FC<RouletteWheelProps> = ({
   return (
     <div className="relative mx-auto w-fit">
       {/* Marker/indicator at the top */}
-      <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1 w-0 h-0 border-l-[15px] border-r-[15px] border-t-[25px] border-l-transparent border-r-transparent border-t-red-600 z-20"></div>
+      <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1 w-0 h-0 border-l-[18px] border-r-[18px] border-t-[30px] border-l-transparent border-r-transparent border-t-red-600 z-20 filter drop-shadow-lg"></div>
       
-      {/* Wheel Container with Shadow */}
-      <div className="relative rounded-full overflow-hidden shadow-2xl">
+      {/* Wheel Container with Enhanced Shadow */}
+      <div className="relative rounded-full overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.3)]">
         <svg 
           width="400" 
           height="400" 
@@ -105,36 +105,58 @@ const RouletteWheel: React.FC<RouletteWheelProps> = ({
         >
           <defs>
             <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-              <feDropShadow dx="0" dy="0" stdDeviation="10" floodColor="#00000044" />
+              <feDropShadow dx="0" dy="0" stdDeviation="12" floodColor="#00000055" />
             </filter>
             <filter id="inner-glow">
-              <feGaussianBlur stdDeviation="2" result="blur" />
+              <feGaussianBlur stdDeviation="3" result="blur" />
               <feComposite in="SourceGraphic" in2="blur" operator="arithmetic" k1="1" k2="1" k3="0" k4="0" />
             </filter>
+            <filter id="texture" x="0%" y="0%" width="100%" height="100%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="2" result="noise" />
+              <feDisplacementMap in="SourceGraphic" in2="noise" scale="5" xChannelSelector="R" yChannelSelector="G" />
+            </filter>
+            <linearGradient id="glossy" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="white" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="white" stopOpacity="0.05" />
+            </linearGradient>
           </defs>
           
-          {/* Outer circle */}
+          {/* Outer circle with enhanced border */}
           <circle cx="200" cy="200" r="195" fill="#1a1a1a" filter="url(#shadow)" />
+          <circle cx="200" cy="200" r="190" fill="none" stroke="#ffffff" strokeWidth="2" opacity="0.2" />
           
-          {/* Segments */}
+          {/* Segments with enhanced styling */}
           <g className="wheel-segments">
             {segments.map((segment, i) => (
-              <g key={i} className="wheel-segment hover:brightness-110 transition-all duration-200">
+              <g key={i} className="wheel-segment group">
+                {/* Main segment fill */}
                 <path 
                   d={segment.path} 
                   fill={segment.fillColor} 
                   stroke="#ffffff" 
-                  strokeWidth="1"
+                  strokeWidth="1.5"
+                  className="transition-all duration-300 ease-in-out"
                 />
+                
+                {/* Glossy overlay */}
+                <path 
+                  d={segment.path} 
+                  fill="url(#glossy)" 
+                  className="opacity-30 group-hover:opacity-50 transition-opacity duration-300"
+                />
+                
+                {/* Prize text with better contrast and readability */}
                 <text
                   x={segment.textX}
                   y={segment.textY}
-                  fontSize="12"
+                  fontSize="13"
                   fontWeight="bold"
                   fill="#ffffff"
                   textAnchor="middle"
                   dominantBaseline="middle"
                   transform={`rotate(${segment.textRotation}, ${segment.textX}, ${segment.textY})`}
+                  className="filter drop-shadow-md"
+                  style={{textShadow: '0px 1px 2px rgba(0,0,0,0.8)'}}
                 >
                   {segment.prize.name}
                 </text>
@@ -142,27 +164,34 @@ const RouletteWheel: React.FC<RouletteWheelProps> = ({
             ))}
           </g>
           
-          {/* Center circle */}
+          {/* Center hub with enhanced styling */}
+          <circle cx="200" cy="200" r="35" fill="#3a3a3a" stroke="#ffffff" strokeWidth="3" />
           <circle cx="200" cy="200" r="30" fill="#f8f8f8" stroke="#d1d1d1" strokeWidth="2" filter="url(#inner-glow)" />
           
-          {/* Decorative dots around center */}
+          {/* Decorative pattern in center */}
+          <circle cx="200" cy="200" r="20" fill="#3a3a3a" opacity="0.2" />
+          
+          {/* Decorative dots around center with improved styling */}
           {[...Array(12)].map((_, i) => {
             const angle = i * 30 * Math.PI / 180;
-            const x = 200 + 45 * Math.cos(angle);
-            const y = 200 + 45 * Math.sin(angle);
+            const x = 200 + 50 * Math.cos(angle);
+            const y = 200 + 50 * Math.sin(angle);
             return (
-              <circle key={i} cx={x} cy={y} r="3" fill="#1a1a1a" />
+              <circle key={i} cx={x} cy={y} r="3.5" fill="#1a1a1a" stroke="#ffffff" strokeWidth="0.5" />
             );
           })}
         </svg>
         
-        {/* Reflection overlay - glass effect */}
-        <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent pointer-events-none rounded-full"></div>
+        {/* Enhanced reflection overlay - glass effect */}
+        <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent pointer-events-none rounded-full"></div>
       </div>
       
-      {/* Lighting effects during spinning */}
+      {/* Enhanced lighting effects during spinning */}
       {spinning && (
-        <div className="absolute inset-0 animate-pulse-light rounded-full bg-gradient-to-tr from-white/0 via-white/5 to-white/0 pointer-events-none"></div>
+        <>
+          <div className="absolute inset-0 animate-pulse-light rounded-full bg-gradient-to-tr from-white/0 via-white/10 to-white/0 pointer-events-none"></div>
+          <div className="absolute -inset-4 bg-primary/5 rounded-full blur-3xl animate-pulse"></div>
+        </>
       )}
     </div>
   );
