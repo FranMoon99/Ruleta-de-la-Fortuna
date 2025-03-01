@@ -8,14 +8,14 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
-// Auth Providers
+// Define explicitly typed auth providers
 export const authProviders = {
-  google: 'google',
-  github: 'github',
-  facebook: 'facebook',
-  twitter: 'twitter',
-  discord: 'discord',
-  email: 'email'
+  google: 'google' as const,
+  github: 'github' as const,
+  facebook: 'facebook' as const,
+  twitter: 'twitter' as const,
+  discord: 'discord' as const,
+  email: 'email' as const
 };
 
 // Authentication Functions
@@ -26,7 +26,7 @@ export const signInWithEmail = async (email: string, password: string) => {
   });
 };
 
-export const signInWithProvider = async (provider: string) => {
+export const signInWithProvider = async (provider: 'google' | 'github' | 'facebook' | 'twitter' | 'discord') => {
   return await supabase.auth.signInWithOAuth({
     provider: provider,
     options: {
