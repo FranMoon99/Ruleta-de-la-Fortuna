@@ -7,3 +7,54 @@ const SUPABASE_URL = "https://cbkmhctwwawtykbqdagz.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNia21oY3R3d2F3dHlrYnFkYWd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4NjMzNjAsImV4cCI6MjA1NjQzOTM2MH0.CLkLELHR5qH3zfV1esNChyT2h6WedObojZgy4y6SIsc";
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+// Auth Providers
+export const authProviders = {
+  google: 'google',
+  github: 'github',
+  facebook: 'facebook',
+  twitter: 'twitter',
+  discord: 'discord',
+  email: 'email'
+};
+
+// Authentication Functions
+export const signInWithEmail = async (email: string, password: string) => {
+  return await supabase.auth.signInWithPassword({
+    email,
+    password
+  });
+};
+
+export const signInWithProvider = async (provider: string) => {
+  return await supabase.auth.signInWithOAuth({
+    provider: provider,
+    options: {
+      redirectTo: window.location.origin
+    }
+  });
+};
+
+export const signUp = async (email: string, password: string) => {
+  return await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: window.location.origin
+    }
+  });
+};
+
+export const signOut = async () => {
+  return await supabase.auth.signOut();
+};
+
+export const getCurrentUser = async () => {
+  const { data } = await supabase.auth.getUser();
+  return data.user;
+};
+
+export const getSession = async () => {
+  const { data } = await supabase.auth.getSession();
+  return data.session;
+};
