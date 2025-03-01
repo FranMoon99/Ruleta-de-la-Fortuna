@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useRoulette } from '@/hooks/useRoulette';
 import RouletteWheel from '@/components/RouletteWheel';
@@ -10,7 +11,7 @@ import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Volume2, VolumeX, UserIcon, LogOut, LogIn, Mail, Github, Twitter } from 'lucide-react';
 import { playClickSound } from '@/utils/animations';
-import { supabase, signInWithProvider, signOut } from '@/integrations/supabase/client';
+import { supabase, signInWithProvider, signOut, authProviders } from '@/integrations/supabase/client';
 import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/components/ui/use-toast';
 import {
@@ -74,7 +75,7 @@ const Index = () => {
     }
   };
   
-  const handleLogin = async (provider: string) => {
+  const handleLogin = async (provider: 'google' | 'github' | 'facebook' | 'twitter' | 'discord') => {
     try {
       const { error } = await signInWithProvider(provider);
       
