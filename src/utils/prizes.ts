@@ -1,5 +1,4 @@
-
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, saveSpinResult as saveSpinResultToSupabase, getUserPoints } from "@/integrations/supabase/client";
 
 export interface Prize {
   id: string;
@@ -25,124 +24,88 @@ export const defaultPrizes: Prize[] = [
 ];
 
 export const generateRandomAngle = (segmentCount: number): number => {
-  // Generate a random angle within 360 degrees
-  // Then add multiple full rotations (e.g., 1080 degrees = 3 full rotations)
   const segmentAngle = 360 / segmentCount;
   const randomSegment = Math.floor(Math.random() * segmentCount);
   const randomOffset = Math.random() * segmentAngle;
   const baseAngle = randomSegment * segmentAngle + randomOffset;
   
-  // Add between 3-6 full rotations for dramatic effect
   const extraRotations = 3 + Math.floor(Math.random() * 4);
   return baseAngle + (360 * extraRotations);
 };
 
 export const calculatePrizeIndex = (angle: number, segmentCount: number): number => {
-  // Normalize the angle to 0-360 degrees
   const normalizedAngle = angle % 360;
   const segmentAngle = 360 / segmentCount;
   
-  // Calculate which segment the wheel lands on
-  // Note: we invert the index because the wheel rotates clockwise
   const segmentIndex = Math.floor(normalizedAngle / segmentAngle);
   return (segmentCount - 1) - segmentIndex;
 };
 
 export const saveCustomPrizes = async (prizes: Prize[]): Promise<void> => {
-  // Guardar localmente para uso sin conexión
   localStorage.setItem('roulette-prizes', JSON.stringify(prizes));
   
-  // Si el usuario está autenticado, sincronizar con Supabase
   const { data: { session } } = await supabase.auth.getSession();
   
   if (session?.user) {
-    // Primero limpiar premios existentes (esto requeriría permisos adicionales)
-    // En una implementación más completa, deberíamos actualizar en lugar de borrar/recrear
     console.log("Sincronizando premios personalizados con Supabase...");
   }
 };
 
 export const loadCustomPrizes = async (): Promise<Prize[] | null> => {
-  // Primero intentar cargar desde Supabase si el usuario está autenticado
   const { data: { session } } = await supabase.auth.getSession();
   
   if (session?.user) {
     try {
-      // En una implementación completa, cargaríamos los premios del usuario desde Supabase
       console.log("Intentando cargar premios personalizados desde Supabase...");
-      // Por ahora, caemos de vuelta al almacenamiento local
     } catch (error) {
       console.error("Error cargando premios desde Supabase:", error);
     }
   }
   
-  // Si no hay datos de Supabase o el usuario no está autenticado, usar localStorage
   const saved = localStorage.getItem('roulette-prizes');
   return saved ? JSON.parse(saved) : null;
 };
 
-// Guardar un resultado en Supabase usando RPC
 export const saveSpinResult = async (prizeId: string, userId?: string): Promise<boolean> => {
   try {
-    // Primero verificar si el usuario está autenticado
     if (!userId) {
       const { data: { session } } = await supabase.auth.getSession();
       userId = session?.user?.id;
     }
     
-    // Encontrar el premio para obtener su valor
+    if (!userId) return false;
+    
     const prize = defaultPrizes.find(p => p.id === prizeId);
     const points = prize ? prize.value : 0;
     
-    // Si hay un usuario autenticado, guardar el resultado usando RPC
-    if (userId) {
-      const { error } = await supabase.rpc('save_spin_result', {
-        user_id_param: userId,
-        premio_id_param: prizeId,
-        points_earned_param: points
-      });
-      
-      if (error) {
-        console.error('Error al guardar el resultado:', error);
-        return false;
-      }
-      return true;
-    }
-    
-    return false;
+    await saveSpinResultToSupabase(userId, prizeId, points);
+    return true;
   } catch (error) {
     console.error('Error al guardar el resultado:', error);
     return false;
   }
 };
 
-// Cargar el historial de resultados usando RPC
-export const loadSpinHistory = async (): Promise<any[]> => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session?.user) {
-      return [];
-    }
-    
-    const { data, error } = await supabase.rpc('get_user_spin_history', {
-      user_id_param: session.user.id,
-      limit_count: 30
-    });
-    
-    if (error) {
-      console.error('Error al cargar el historial:', error);
-      return [];
-    }
-    
-    return data || [];
-  } catch (error) {
+export const loadSpinHistory = async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if (!session?.user) {
+    return [];
+  }
+  
+  const { data, error } = await supabase.rpc('get_user_spin_history', {
+    user_id_param: session.user.id,
+    limit_count: 30
+  });
+  
+  if (error) {
     console.error('Error al cargar el historial:', error);
     return [];
   }
+  
+  return data || [];
 };
 
-// Cargar los puntos del usuario usando RPC
 export const loadUserPoints = async (userId?: string): Promise<number> => {
   try {
     if (!userId) {
@@ -152,16 +115,7 @@ export const loadUserPoints = async (userId?: string): Promise<number> => {
     
     if (!userId) return 0;
     
-    const { data, error } = await supabase.rpc('get_user_points', {
-      user_id_param: userId
-    });
-    
-    if (error) {
-      console.error('Error al cargar los puntos:', error);
-      return 0;
-    }
-    
-    return data || 0;
+    return await getUserPoints(userId);
   } catch (error) {
     console.error('Error al cargar los puntos:', error);
     return 0;

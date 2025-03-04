@@ -9,6 +9,33 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      custom_roulettes: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          prizes: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          prizes?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          prizes?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       premios: {
         Row: {
           activo: boolean | null
@@ -42,19 +69,28 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          display_name: string | null
+          favorite_color: string | null
           id: string
+          total_spins: number | null
           updated_at: string
           username: string | null
         }
         Insert: {
           created_at?: string
+          display_name?: string | null
+          favorite_color?: string | null
           id: string
+          total_spins?: number | null
           updated_at?: string
           username?: string | null
         }
         Update: {
           created_at?: string
+          display_name?: string | null
+          favorite_color?: string | null
           id?: string
+          total_spins?: number | null
           updated_at?: string
           username?: string | null
         }
@@ -64,18 +100,21 @@ export type Database = {
         Row: {
           fecha: string
           id: string
+          points_earned: number | null
           premio_id: string | null
           user_id: string | null
         }
         Insert: {
           fecha?: string
           id?: string
+          points_earned?: number | null
           premio_id?: string | null
           user_id?: string | null
         }
         Update: {
           fecha?: string
           id?: string
+          points_earned?: number | null
           premio_id?: string | null
           user_id?: string | null
         }
@@ -89,12 +128,195 @@ export type Database = {
           },
         ]
       }
+      user_points: {
+        Row: {
+          created_at: string
+          id: string
+          total_points: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          total_points?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          total_points?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_settings: {
+        Row: {
+          created_at: string
+          id: string
+          settings: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          settings?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          settings?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_stats: {
+        Row: {
+          created_at: string
+          id: string
+          stats: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          stats?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          stats?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      delete_custom_roulette: {
+        Args: {
+          user_id_param: string
+          roulette_id_param: string
+        }
+        Returns: undefined
+      }
+      get_leaderboard: {
+        Args: {
+          limit_count?: number
+        }
+        Returns: {
+          user_id: string
+          total_points: number
+          username: string
+          display_name: string
+          total_spins: number
+        }[]
+      }
+      get_user_points: {
+        Args: {
+          user_id_param: string
+        }
+        Returns: number
+      }
+      get_user_profile: {
+        Args: {
+          user_id_param: string
+        }
+        Returns: {
+          username: string
+          display_name: string
+          favorite_color: string
+          total_spins: number
+          created_at: string
+          updated_at: string
+        }[]
+      }
+      get_user_roulettes: {
+        Args: {
+          user_id_param: string
+        }
+        Returns: {
+          id: string
+          name: string
+          prizes: Json
+          created_at: string
+        }[]
+      }
+      get_user_settings: {
+        Args: {
+          user_id_param: string
+        }
+        Returns: Json
+      }
+      get_user_spin_history: {
+        Args: {
+          user_id_param: string
+          limit_count?: number
+        }
+        Returns: {
+          id: string
+          fecha: string
+          premio_id: string
+          points_earned: number
+        }[]
+      }
+      get_user_stats: {
+        Args: {
+          user_id_param: string
+        }
+        Returns: Json
+      }
+      save_custom_roulette: {
+        Args: {
+          user_id_param: string
+          roulette_name: string
+          prizes_json: Json
+        }
+        Returns: string
+      }
+      save_spin_result: {
+        Args: {
+          user_id_param: string
+          premio_id_param: string
+          points_earned_param?: number
+        }
+        Returns: undefined
+      }
+      save_user_settings: {
+        Args: {
+          user_id_param: string
+          settings_json: Json
+        }
+        Returns: undefined
+      }
+      sync_user_stats: {
+        Args: {
+          user_id_param: string
+          stats_json: Json
+        }
+        Returns: undefined
+      }
+      update_user_profile: {
+        Args: {
+          user_id_param: string
+          username_param: string
+          display_name_param: string
+          favorite_color_param: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Prize, defaultPrizes, generateRandomAngle, calculatePrizeIndex, loadCustomPrizes, saveCustomPrizes } from '../utils/prizes';
 import { playSpinSound, playWinSound, getRandomSpinDuration } from '../utils/animations';
@@ -10,7 +9,9 @@ import {
   saveUserSettings, 
   getUserSettings, 
   syncUserStats, 
-  getUserStats 
+  getUserStats,
+  getUserProfile,
+  UserProfile
 } from '@/integrations/supabase/client';
 
 export interface SpinResult {
@@ -117,30 +118,19 @@ export const useRoulette = () => {
       setIsLoadingUserData(true);
       
       try {
-        // Get user points using RPC
         const userPoints = await getUserPoints(user.id);
         setPoints(userPoints);
         
-        // Get user profile from RPC
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-        
-        if (profileError) {
-          console.error('Error loading profile:', profileError);
-        }
+        const profileData = await getUserProfile(user.id);
         
         if (profileData) {
           setTotalSpins(profileData.total_spins || 0);
         }
         
-        // Get spin history from RPC
         const historyData = await getUserSpinHistory(user.id);
         
         if (historyData && Array.isArray(historyData) && historyData.length > 0) {
-          const spinResults: SpinResult[] = historyData.map((item: any) => {
+          const spinResults: SpinResult[] = historyData.map((item) => {
             const prize = prizes.find(p => p.id === item.premio_id) || {
               id: item.premio_id || 'unknown',
               name: 'Premio desconocido',
@@ -157,10 +147,8 @@ export const useRoulette = () => {
           setHistory(spinResults);
         }
         
-        // Load user settings from cloud
         await syncSettingsFromCloud();
         
-        // Load user statistics from cloud
         await syncStatsFromCloud();
         
       } catch (error) {
@@ -183,10 +171,8 @@ export const useRoulette = () => {
   useEffect(() => {
     localStorage.setItem('roulette-sound-settings', JSON.stringify(soundSettings));
     
-    // Auto sync settings to cloud if user is logged in
     if (user && lastSyncTime) {
       const timeSinceLastSync = new Date().getTime() - lastSyncTime.getTime();
-      // Only sync if it's been more than 1 minute since last sync
       if (timeSinceLastSync > 60000) {
         syncSettingsToCloud();
       }
@@ -308,7 +294,6 @@ export const useRoulette = () => {
           setPoints(prev => prev + prize.value);
           setTotalSpins(prev => prev + 1);
           
-          // Sync statistics to cloud after spin
           syncStatsToCloud();
         } catch (error) {
           console.error("Error saving result:", error);
@@ -331,7 +316,6 @@ export const useRoulette = () => {
     setStatistics({});
     localStorage.removeItem('roulette-statistics');
     
-    // Also reset on cloud if user is logged in
     if (user) {
       syncUserStats(user.id, {});
     }

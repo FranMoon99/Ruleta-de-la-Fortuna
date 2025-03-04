@@ -59,24 +59,60 @@ export const getSession = async () => {
   return data.session;
 };
 
+// Define interfaces for RPC function results
+export interface UserPoints {
+  total_points: number;
+}
+
+export interface SpinHistoryItem {
+  id: string;
+  fecha: string;
+  premio_id: string;
+  points_earned: number;
+}
+
+export interface LeaderboardItem {
+  user_id: string;
+  total_points: number;
+  username: string;
+  display_name: string;
+  total_spins: number;
+}
+
+export interface UserProfile {
+  username: string | null;
+  display_name: string | null;
+  favorite_color: string | null;
+  total_spins: number;
+  created_at: string;
+  updated_at: string;
+}
+
 // Expose our RPC functions with proper typing
 export const getUserPoints = async (userId: string): Promise<number> => {
-  const { data, error } = await supabase.rpc('get_user_points', { user_id_param: userId });
+  const { data, error } = await supabase.rpc('get_user_points', { 
+    user_id_param: userId 
+  });
+  
   if (error) throw error;
   return data || 0;
 };
 
-export const getUserSpinHistory = async (userId: string, limit = 30): Promise<any[]> => {
+export const getUserSpinHistory = async (userId: string, limit = 30): Promise<SpinHistoryItem[]> => {
   const { data, error } = await supabase.rpc('get_user_spin_history', { 
     user_id_param: userId,
     limit_count: limit
   });
+  
   if (error) throw error;
   return data || [];
 };
 
-export const getLeaderboard = async (limit = 5): Promise<any[]> => {
-  const { data, error } = await supabase.rpc('get_leaderboard', { limit_count: limit });
+export const getLeaderboard = async (limit = 5): Promise<LeaderboardItem[]> => {
+  const { data, error } = await supabase.rpc('get_leaderboard', { 
+    limit_count: limit 
+  });
+  
   if (error) throw error;
   return data || [];
 };
@@ -91,10 +127,11 @@ export const saveSpinResult = async (
     premio_id_param: prizeId,
     points_earned_param: pointsEarned
   });
+  
   if (error) throw error;
 };
 
-// New functions for user settings and custom roulettes
+// User settings interface
 export interface UserSettings {
   soundSettings: {
     masterVolume: number;
@@ -114,6 +151,7 @@ export const saveUserSettings = async (
     user_id_param: userId,
     settings_json: settings
   });
+  
   if (error) throw error;
 };
 
@@ -121,6 +159,7 @@ export const getUserSettings = async (userId: string): Promise<UserSettings | nu
   const { data, error } = await supabase.rpc('get_user_settings', {
     user_id_param: userId
   });
+  
   if (error) throw error;
   return data || null;
 };
@@ -135,6 +174,7 @@ export const saveCustomRoulette = async (
     roulette_name: name,
     prizes_json: prizes
   });
+  
   if (error) throw error;
   return data || '';
 };
@@ -143,6 +183,7 @@ export const getUserRoulettes = async (userId: string): Promise<any[]> => {
   const { data, error } = await supabase.rpc('get_user_roulettes', {
     user_id_param: userId
   });
+  
   if (error) throw error;
   return data || [];
 };
@@ -155,10 +196,11 @@ export const deleteCustomRoulette = async (
     user_id_param: userId,
     roulette_id_param: rouletteId
   });
+  
   if (error) throw error;
 };
 
-// New user profile functions
+// User profile functions
 export const updateUserProfile = async (
   userId: string,
   profile: {
@@ -173,13 +215,15 @@ export const updateUserProfile = async (
     display_name_param: profile.display_name,
     favorite_color_param: profile.favorite_color
   });
+  
   if (error) throw error;
 };
 
-export const getUserProfile = async (userId: string): Promise<any> => {
+export const getUserProfile = async (userId: string): Promise<UserProfile | null> => {
   const { data, error } = await supabase.rpc('get_user_profile', {
     user_id_param: userId
   });
+  
   if (error) throw error;
   return data || null;
 };
@@ -193,6 +237,7 @@ export const syncUserStats = async (
     user_id_param: userId,
     stats_json: stats
   });
+  
   if (error) throw error;
 };
 
@@ -200,6 +245,7 @@ export const getUserStats = async (userId: string): Promise<Record<string, numbe
   const { data, error } = await supabase.rpc('get_user_stats', {
     user_id_param: userId
   });
+  
   if (error) throw error;
   return data || {};
 };

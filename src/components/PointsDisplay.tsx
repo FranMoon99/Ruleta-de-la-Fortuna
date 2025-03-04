@@ -1,161 +1,115 @@
 
-import React, { useState, useEffect } from 'react';
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle,
-  CardDescription
-} from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Coins, TrendingUp, Award, Crown } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import React, { useEffect, useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { getUserPoints, getLeaderboard } from '@/integrations/supabase/client';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts';
 
 interface PointsDisplayProps {
-  user: any | null;
   points: number;
-  onPointsUpdate?: (points: number) => void;
+  userId?: string | null;
+  isLoading?: boolean;
 }
 
-const PointsDisplay: React.FC<PointsDisplayProps> = ({ 
-  user,
-  points,
-  onPointsUpdate
-}) => {
-  const [loading, setLoading] = useState(false);
-  const [leaderboard, setLeaderboard] = useState<any[]>([]);
-  const [nextMilestone, setNextMilestone] = useState(1000);
-  const [progress, setProgress] = useState(0);
+interface LeaderboardItem {
+  username: string;
+  displayName: string;
+  totalPoints: number;
+}
 
-  // Cargar leaderboard
+const PointsDisplay: React.FC<PointsDisplayProps> = ({ points, userId, isLoading = false }) => {
+  const [leaderboard, setLeaderboard] = useState<LeaderboardItem[]>([]);
+  const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
+
   useEffect(() => {
-    const fetchLeaderboard = async () => {
-      if (!user) return;
+    const loadLeaderboard = async () => {
+      if (!userId) return;
       
-      setLoading(true);
+      setLoadingLeaderboard(true);
       try {
-        // Using RPC function instead of direct table query
-        const { data, error } = await supabase
-          .rpc('get_leaderboard', { limit_count: 5 });
+        const data = await getLeaderboard(5);
         
-        if (error) throw error;
+        // Transform the data for the chart
+        const formattedData = data.map(item => ({
+          username: item.username || 'Usuario',
+          displayName: item.display_name || item.username || 'Usuario',
+          totalPoints: item.total_points
+        }));
         
-        setLeaderboard(data || []);
+        setLeaderboard(formattedData);
       } catch (error) {
-        console.error('Error cargando leaderboard:', error);
+        console.error('Error loading leaderboard:', error);
       } finally {
-        setLoading(false);
+        setLoadingLeaderboard(false);
       }
     };
     
-    fetchLeaderboard();
-  }, [user, points]);
+    loadLeaderboard();
+  }, [userId, points]);
 
-  // Calcular el próximo milestone y el progreso
-  useEffect(() => {
-    // Definir los milestones
-    const milestones = [100, 500, 1000, 2000, 5000, 10000];
-    
-    // Encontrar el próximo milestone
-    const next = milestones.find(m => m > points) || (points + 1000);
-    const prev = milestones.filter(m => m <= points).pop() || 0;
-    
-    setNextMilestone(next);
-    
-    // Calcular el progreso como porcentaje hacia el próximo milestone
-    const calculatedProgress = prev === next ? 100 : Math.floor(((points - prev) / (next - prev)) * 100);
-    setProgress(calculatedProgress);
-  }, [points]);
-
-  // Si no hay usuario, mostrar mensaje para iniciar sesión
-  if (!user) {
-    return (
-      <Card className="glass-panel">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Coins className="h-5 w-5" />
-            Sistema de Puntos
-          </CardTitle>
-          <CardDescription>
-            Inicia sesión para acumular puntos
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col items-center justify-center py-6">
-          <Award className="h-12 w-12 text-muted-foreground mb-3 opacity-50" />
-          <p className="text-muted-foreground text-center">
-            Gana premios y acumula puntos al girar la ruleta
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
+  const pointsLevel = Math.floor(points / 1000) + 1;
+  const progressToNextLevel = (points % 1000) / 10; // 0-100 scale
 
   return (
-    <Card className="glass-panel">
+    <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Coins className="h-5 w-5" />
-          Puntos Acumulados
-        </CardTitle>
+        <CardTitle>Tus Puntos</CardTitle>
       </CardHeader>
-      
-      <CardContent className="space-y-4">
-        <div className="bg-primary/10 rounded-lg p-4 text-center">
-          <p className="text-sm text-muted-foreground mb-1">Tus Puntos</p>
-          <p className="text-3xl font-bold">{points || 0}</p>
-          
-          <div className="mt-3">
-            <div className="flex justify-between text-xs mb-1">
-              <span>Progreso</span>
-              <span>Próximo: {nextMilestone}</span>
-            </div>
-            <Progress value={progress} className="h-2" />
+      <CardContent>
+        {isLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-32 w-full" />
           </div>
-        </div>
-        
-        {leaderboard.length > 0 && (
-          <div className="bg-secondary/10 rounded-lg p-4">
-            <h4 className="text-sm font-medium mb-3 flex items-center gap-1">
-              <Crown className="h-4 w-4" />
-              Tabla de Líderes
-            </h4>
-            
-            <ScrollArea className="h-[140px]">
-              <div className="space-y-2">
-                {leaderboard.map((entry, index) => {
-                  const isCurrentUser = entry.user_id === user.id;
-                  // Handle potential data structure differences
-                  const displayName = entry.display_name || 
-                                      entry.username ||
-                                      entry.user_id?.substring(0, 8);
-                  
-                  return (
-                    <div 
-                      key={entry.user_id}
-                      className={`flex items-center justify-between p-2 rounded-md ${
-                        isCurrentUser ? 'bg-primary/10 font-medium' : 'bg-background/60'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                          index === 0 ? 'bg-amber-500 text-white' :
-                          index === 1 ? 'bg-gray-400 text-white' :
-                          index === 2 ? 'bg-amber-800 text-white' :
-                          'bg-muted text-muted-foreground'
-                        }`}>
-                          {index + 1}
-                        </div>
-                        <span className="text-sm truncate max-w-[120px]">
-                          {displayName} {isCurrentUser && '(Tú)'}
-                        </span>
-                      </div>
-                      <span className="text-sm font-medium">{entry.total_points}</span>
-                    </div>
-                  );
-                })}
+        ) : (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-2xl font-bold">{points}</p>
+                <p className="text-sm text-muted-foreground">puntos totales</p>
               </div>
-            </ScrollArea>
+              <div>
+                <p className="text-xl font-semibold">Nivel {pointsLevel}</p>
+                <div className="w-full bg-secondary h-2 rounded-full mt-1">
+                  <div 
+                    className="bg-primary h-2 rounded-full" 
+                    style={{ width: `${progressToNextLevel}%` }}
+                  />
+                </div>
+                <p className="text-xs text-right mt-1 text-muted-foreground">
+                  {points % 1000} / 1000 para el siguiente nivel
+                </p>
+              </div>
+            </div>
+            
+            {loadingLeaderboard ? (
+              <Skeleton className="h-32 w-full" />
+            ) : leaderboard.length > 0 ? (
+              <div>
+                <h3 className="text-sm font-medium mb-2">Clasificación</h3>
+                <ResponsiveContainer width="100%" height={180}>
+                  <BarChart data={leaderboard}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis 
+                      dataKey="displayName" 
+                      tick={{ fontSize: 12 }}
+                      tickFormatter={(value) => value.substring(0, 8) + (value.length > 8 ? '...' : '')}
+                    />
+                    <YAxis />
+                    <Tooltip 
+                      formatter={(value, name) => [value, 'Puntos']}
+                      labelFormatter={(value) => `Usuario: ${value}`}
+                    />
+                    <Bar dataKey="totalPoints" fill="var(--primary)" name="Puntos" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <p className="text-center text-muted-foreground py-4">
+                No hay datos de clasificación disponibles
+              </p>
+            )}
           </div>
         )}
       </CardContent>
