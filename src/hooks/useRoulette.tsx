@@ -111,25 +111,40 @@ export const useRoulette = () => {
       setIsLoadingUserData(true);
       
       try {
-        // Obtener los puntos del usuario
+        // Obtener los puntos del usuario con una consulta más segura
         const { data: pointsData, error: pointsError } = await supabase
-          .from('user_points')
-          .select('total_points')
-          .eq('user_id', user.id)
-          .single();
+          .rpc('get_user_points', { user_id_param: user.id })
+          .then(response => {
+            if (response.error) {
+              console.error('RPC error:', response.error);
+              // Fallback to direct query if RPC fails
+              return supabase
+                .from('user_points' as any)
+                .select('total_points')
+                .eq('user_id', user.id)
+                .single();
+            }
+            return response;
+          });
         
-        if (pointsError && pointsError.code !== 'PGRST116') {  // PGRST116 es "no se encontraron resultados"
+        if (pointsError && pointsError.code !== 'PGRST116') {
           console.error('Error cargando puntos:', pointsError);
         }
         
+        // Safely access total_points regardless of data structure
         if (pointsData) {
-          setPoints(pointsData.total_points);
+          // Handle both RPC result (single value) or direct query (object with total_points)
+          const points = typeof pointsData === 'number' 
+            ? pointsData 
+            : pointsData.total_points || 0;
+          
+          setPoints(points);
         }
         
-        // Obtener información del perfil
+        // Obtener información del perfil con verificación de tipo
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
-          .select('total_spins')
+          .select('*')
           .eq('id', user.id)
           .single();
         
@@ -138,25 +153,39 @@ export const useRoulette = () => {
         }
         
         if (profileData) {
-          setTotalSpins(profileData.total_spins || 0);
+          // Safely access total_spins with type checking
+          const spins = (profileData as any).total_spins || 0;
+          setTotalSpins(spins);
         }
         
-        // Cargar historial de giros
+        // Cargar historial de giros con manejo de errores y tipado
         const { data: historyData, error: historyError } = await supabase
-          .from('resultados')
-          .select('id, fecha, premio_id, points_earned')
-          .eq('user_id', user.id)
-          .order('fecha', { ascending: false })
-          .limit(30);
+          .rpc('get_user_spin_history', { 
+            user_id_param: user.id,
+            limit_count: 30
+          })
+          .then(response => {
+            if (response.error) {
+              console.error('RPC error:', response.error);
+              // Fallback to direct query
+              return supabase
+                .from('resultados' as any)
+                .select('id, fecha, premio_id, points_earned')
+                .eq('user_id', user.id)
+                .order('fecha' as any, { ascending: false })
+                .limit(30);
+            }
+            return response;
+          });
         
         if (historyError) {
           console.error('Error cargando historial:', historyError);
         }
         
         if (historyData && historyData.length > 0) {
-          // Convertir los resultados de la base de datos a SpinResult
-          const spinResults: SpinResult[] = historyData.map(item => {
-            // Encontrar el premio por ID
+          // Convertir los resultados a SpinResult con manejo de tipo seguro
+          const spinResults: SpinResult[] = historyData.map((item: any) => {
+            // Find prize by ID or create a fallback
             const prize = prizes.find(p => p.id === item.premio_id) || {
               id: item.premio_id || 'unknown',
               name: 'Premio desconocido',

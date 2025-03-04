@@ -27,6 +27,18 @@ interface UserProfileProps {
   onUpdateProfile?: () => void;
 }
 
+interface ProfileData {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  username?: string;
+  display_name?: string;
+  avatar_url?: string;
+  total_spins?: number;
+  favorite_prize?: string;
+  [key: string]: any; // Allow for any additional properties
+}
+
 const UserProfile: React.FC<UserProfileProps> = ({ 
   user, 
   points, 
@@ -37,7 +49,7 @@ const UserProfile: React.FC<UserProfileProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(false);
-  const [profileDetails, setProfileDetails] = useState<any>(null);
+  const [profileDetails, setProfileDetails] = useState<ProfileData | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -55,8 +67,16 @@ const UserProfile: React.FC<UserProfileProps> = ({
         
         if (error) throw error;
         
-        setProfileDetails(data);
-        setDisplayName(data.display_name || data.username || user.email);
+        // Set profileDetails with type safety
+        const profileData = data as ProfileData;
+        setProfileDetails(profileData);
+        
+        // Set displayName from profile data with fallbacks
+        setDisplayName(
+          profileData.display_name || 
+          profileData.username || 
+          user.email
+        );
       } catch (error: any) {
         console.error('Error al cargar el perfil:', error.message);
       }
@@ -72,11 +92,17 @@ const UserProfile: React.FC<UserProfileProps> = ({
     setLoading(true);
     
     try {
+      // Create an update object with only valid fields
+      const updateData: any = {};
+      
+      // Only add display_name if profiles table has this column
+      if (displayName) {
+        updateData.display_name = displayName;
+      }
+      
       const { error } = await supabase
         .from('profiles')
-        .update({
-          display_name: displayName
-        })
+        .update(updateData)
         .eq('id', user.id);
       
       if (error) throw error;
