@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useRoulette } from '@/hooks/useRoulette';
@@ -19,6 +18,7 @@ import { playClickSound } from '@/utils/animations';
 import { signOut } from '@/integrations/supabase/client';
 import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/components/ui/use-toast';
+import { defaultPrizes } from '@/utils/prizes';
 
 const Index = () => {
   const {
