@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useRoulette } from '@/hooks/useRoulette';
@@ -6,10 +7,14 @@ import SpinButton from '@/components/SpinButton';
 import PrizeDisplay from '@/components/PrizeDisplay';
 import HistoryDisplay from '@/components/HistoryDisplay';
 import PrizeCustomizer from '@/components/PrizeCustomizer';
+import StatisticsDisplay from '@/components/StatisticsDisplay';
+import SoundSettings from '@/components/SoundSettings';
+import CustomRouletteMode from '@/components/CustomRouletteMode';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
-import { Volume2, VolumeX, UserIcon, LogOut } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Volume2, VolumeX, UserIcon, LogOut, BarChart2, History, Sliders } from 'lucide-react';
 import { playClickSound } from '@/utils/animations';
 import { signOut } from '@/integrations/supabase/client';
 import { Toaster } from '@/components/ui/toaster';
@@ -24,13 +29,18 @@ const Index = () => {
     spinAngle,
     spinDuration,
     user,
+    statistics,
+    soundSettings,
+    customMode,
     spin,
     updatePrizes,
-    resetHistory
+    resetHistory,
+    resetStatistics,
+    updateSoundSettings,
+    toggleCustomMode
   } = useRoulette();
   
   const [showWinAnimation, setShowWinAnimation] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(true);
   const { toast } = useToast();
   
   useEffect(() => {
@@ -47,7 +57,7 @@ const Index = () => {
   useEffect(() => {
     const originalPlay = HTMLAudioElement.prototype.play;
     
-    if (!soundEnabled) {
+    if (!soundSettings.masterVolume) {
       HTMLAudioElement.prototype.play = function() {
         return new Promise((resolve) => resolve());
       };
@@ -58,7 +68,7 @@ const Index = () => {
     return () => {
       HTMLAudioElement.prototype.play = originalPlay;
     };
-  }, [soundEnabled]);
+  }, [soundSettings.masterVolume]);
   
   const handleLogout = async () => {
     try {
@@ -77,11 +87,10 @@ const Index = () => {
   };
   
   const toggleSound = () => {
-    if (soundEnabled) {
-      setSoundEnabled(false);
-    } else {
-      setSoundEnabled(true);
-      playClickSound();
+    const newVolume = soundSettings.masterVolume > 0 ? 0 : 0.5;
+    updateSoundSettings({ masterVolume: newVolume });
+    if (newVolume > 0 && soundSettings.clickSound) {
+      playClickSound(newVolume);
     }
   };
   
@@ -120,7 +129,48 @@ const Index = () => {
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 xl:gap-12">
           <div className="lg:col-span-1 order-3 lg:order-1">
-            <HistoryDisplay history={history} onReset={resetHistory} />
+            <Tabs defaultValue="history" className="h-full">
+              <TabsList className="grid grid-cols-3 mb-4">
+                <TabsTrigger value="history" className="flex items-center gap-1" onClick={() => soundSettings.clickSound && playClickSound(soundSettings.masterVolume)}>
+                  <History className="h-4 w-4" />
+                  <span className="hidden sm:inline">Historial</span>
+                </TabsTrigger>
+                <TabsTrigger value="statistics" className="flex items-center gap-1" onClick={() => soundSettings.clickSound && playClickSound(soundSettings.masterVolume)}>
+                  <BarChart2 className="h-4 w-4" />
+                  <span className="hidden sm:inline">Estadísticas</span>
+                </TabsTrigger>
+                <TabsTrigger value="settings" className="flex items-center gap-1" onClick={() => soundSettings.clickSound && playClickSound(soundSettings.masterVolume)}>
+                  <Sliders className="h-4 w-4" />
+                  <span className="hidden sm:inline">Ajustes</span>
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="history" className="h-full">
+                <HistoryDisplay history={history} onReset={resetHistory} />
+              </TabsContent>
+              
+              <TabsContent value="statistics" className="h-full">
+                <StatisticsDisplay 
+                  statistics={statistics}
+                  prizes={prizes}
+                  onReset={resetStatistics}
+                />
+              </TabsContent>
+              
+              <TabsContent value="settings" className="space-y-4">
+                <SoundSettings 
+                  settings={soundSettings}
+                  onUpdate={updateSoundSettings}
+                />
+                
+                <CustomRouletteMode 
+                  prizes={defaultPrizes}
+                  customMode={customMode}
+                  onUpdate={updatePrizes}
+                  onToggleMode={toggleCustomMode}
+                />
+              </TabsContent>
+            </Tabs>
           </div>
           
           <div className="lg:col-span-1 order-1 lg:order-2 flex flex-col items-center">
@@ -138,7 +188,7 @@ const Index = () => {
                 className="absolute top-2 right-2 h-9 w-9 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white/90 shadow-md transition-all duration-300"
                 onClick={toggleSound}
               >
-                {soundEnabled ? (
+                {soundSettings.masterVolume > 0 ? (
                   <Volume2 className="h-4 w-4 text-primary" />
                 ) : (
                   <VolumeX className="h-4 w-4 text-muted-foreground" />

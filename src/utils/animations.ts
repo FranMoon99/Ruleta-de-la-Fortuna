@@ -1,24 +1,23 @@
-
 export const playSpinSound = (): HTMLAudioElement => {
   const audio = new Audio();
   audio.src = 'https://assets.mixkit.co/sfx/preview/mixkit-casino-wheel-spinning-1057.mp3';
   audio.volume = 0.5;
-  audio.play();
+  audio.play().catch(e => console.error("Error reproduciendo sonido de giro:", e));
   return audio;
 };
 
-export const playWinSound = (): void => {
+export const playWinSound = (volume: number = 0.6): void => {
   const audio = new Audio();
   audio.src = 'https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3';
-  audio.volume = 0.6;
-  audio.play();
+  audio.volume = volume;
+  audio.play().catch(e => console.error("Error reproduciendo sonido de victoria:", e));
 };
 
-export const playClickSound = (): void => {
+export const playClickSound = (volume: number = 0.3): void => {
   const audio = new Audio();
   audio.src = 'https://assets.mixkit.co/sfx/preview/mixkit-interface-click-1126.mp3';
-  audio.volume = 0.3;
-  audio.play();
+  audio.volume = volume;
+  audio.play().catch(e => console.error("Error reproduciendo sonido de clic:", e));
 };
 
 export const getRandomSpinDuration = (): number => {
