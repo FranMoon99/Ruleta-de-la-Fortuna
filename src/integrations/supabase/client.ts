@@ -93,3 +93,113 @@ export const saveSpinResult = async (
   });
   if (error) throw error;
 };
+
+// New functions for user settings and custom roulettes
+export interface UserSettings {
+  soundSettings: {
+    masterVolume: number;
+    spinSound: boolean;
+    winSound: boolean;
+    clickSound: boolean;
+  };
+  favoriteColor?: string;
+  customRoulettes?: any[];
+}
+
+export const saveUserSettings = async (
+  userId: string,
+  settings: UserSettings
+): Promise<void> => {
+  const { error } = await supabase.rpc('save_user_settings', {
+    user_id_param: userId,
+    settings_json: settings
+  });
+  if (error) throw error;
+};
+
+export const getUserSettings = async (userId: string): Promise<UserSettings | null> => {
+  const { data, error } = await supabase.rpc('get_user_settings', {
+    user_id_param: userId
+  });
+  if (error) throw error;
+  return data || null;
+};
+
+export const saveCustomRoulette = async (
+  userId: string,
+  name: string,
+  prizes: any[]
+): Promise<string> => {
+  const { data, error } = await supabase.rpc('save_custom_roulette', {
+    user_id_param: userId,
+    roulette_name: name,
+    prizes_json: prizes
+  });
+  if (error) throw error;
+  return data || '';
+};
+
+export const getUserRoulettes = async (userId: string): Promise<any[]> => {
+  const { data, error } = await supabase.rpc('get_user_roulettes', {
+    user_id_param: userId
+  });
+  if (error) throw error;
+  return data || [];
+};
+
+export const deleteCustomRoulette = async (
+  userId: string,
+  rouletteId: string
+): Promise<void> => {
+  const { error } = await supabase.rpc('delete_custom_roulette', {
+    user_id_param: userId,
+    roulette_id_param: rouletteId
+  });
+  if (error) throw error;
+};
+
+// New user profile functions
+export const updateUserProfile = async (
+  userId: string,
+  profile: {
+    username?: string;
+    display_name?: string;
+    favorite_color?: string;
+  }
+): Promise<void> => {
+  const { error } = await supabase.rpc('update_user_profile', {
+    user_id_param: userId,
+    username_param: profile.username,
+    display_name_param: profile.display_name,
+    favorite_color_param: profile.favorite_color
+  });
+  if (error) throw error;
+};
+
+export const getUserProfile = async (userId: string): Promise<any> => {
+  const { data, error } = await supabase.rpc('get_user_profile', {
+    user_id_param: userId
+  });
+  if (error) throw error;
+  return data || null;
+};
+
+// Stats synchronization functions
+export const syncUserStats = async (
+  userId: string,
+  stats: Record<string, number>
+): Promise<void> => {
+  const { error } = await supabase.rpc('sync_user_stats', {
+    user_id_param: userId,
+    stats_json: stats
+  });
+  if (error) throw error;
+};
+
+export const getUserStats = async (userId: string): Promise<Record<string, number>> => {
+  const { data, error } = await supabase.rpc('get_user_stats', {
+    user_id_param: userId
+  });
+  if (error) throw error;
+  return data || {};
+};

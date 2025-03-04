@@ -1,18 +1,21 @@
 
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { User, Mail, Award, Check, X } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/use-toast';
+import { User, Mail, Award, Check, X, Cloud, RefreshCw } from 'lucide-react';
+import { getUserProfile, updateUserProfile } from '@/integrations/supabase/client';
+import { useToast } from '@/components/ui/use-toast';
+import { Badge } from '@/components/ui/badge';
 
 interface UserProfileProps {
   user: any | null;
   points: number;
   totalSpins: number;
+  syncSettings?: () => Promise<void>;
+  syncStats?: () => Promise<void>;
   favoriteColor?: string;
 }
 
@@ -20,30 +23,28 @@ const UserProfile: React.FC<UserProfileProps> = ({
   user, 
   points, 
   totalSpins,
+  syncSettings,
+  syncStats,
   favoriteColor 
 }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [username, setUsername] = useState(user?.user_metadata?.username || '');
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [username, setUsername] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [selectedColor, setSelectedColor] = useState(favoriteColor || '');
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
   const handleSaveProfile = async () => {
     if (!user) return;
     
     setIsLoading(true);
     try {
-      // Update the profile in Supabase
-      const { error } = await supabase
-        .from('profiles')
-        .update({ 
-          username: username,
-          // We use any type here since we know these fields exist in our database
-          // but might not be reflected in TypeScript types yet
-          ...(displayName ? { display_name: displayName } as any : {})
-        })
-        .eq('id', user.id);
-      
-      if (error) throw error;
+      await updateUserProfile(user.id, {
+        username: username,
+        display_name: displayName,
+        favorite_color: selectedColor
+      });
       
       toast({
         title: "Perfil actualizado",
@@ -62,24 +63,48 @@ const UserProfile: React.FC<UserProfileProps> = ({
     }
   };
 
+  const handleSyncAll = async () => {
+    if (!user) return;
+    
+    setIsSyncing(true);
+    try {
+      // Sync settings if function is provided
+      if (syncSettings) {
+        await syncSettings();
+      }
+      
+      // Sync stats if function is provided
+      if (syncStats) {
+        await syncStats();
+      }
+      
+      toast({
+        title: "Sincronización completada",
+        description: "Tus datos han sido sincronizados con la nube."
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error de sincronización",
+        description: error.message || "No se pudieron sincronizar todos los datos",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   // Cargar datos del perfil desde Supabase
-  React.useEffect(() => {
+  useEffect(() => {
     const loadProfile = async () => {
       if (!user) return;
       
       try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('username, display_name')
-          .eq('id', user.id)
-          .single();
+        const profile = await getUserProfile(user.id);
         
-        if (error) throw error;
-        
-        if (data) {
-          setUsername(data.username || '');
-          // Type assertion to access new fields
-          setDisplayName((data as any).display_name || '');
+        if (profile) {
+          setUsername(profile.username || '');
+          setDisplayName(profile.display_name || '');
+          setSelectedColor(profile.favorite_color || '');
         }
       } catch (error) {
         console.error("Error loading profile:", error);
@@ -106,19 +131,42 @@ const UserProfile: React.FC<UserProfileProps> = ({
     );
   }
 
+  const colorOptions = [
+    { name: 'Rojo', value: '#ef4444' },
+    { name: 'Azul', value: '#3b82f6' },
+    { name: 'Verde', value: '#22c55e' },
+    { name: 'Púrpura', value: '#a855f7' },
+    { name: 'Ámbar', value: '#f59e0b' },
+    { name: 'Rosa', value: '#ec4899' },
+    { name: 'Esmeralda', value: '#10b981' },
+    { name: 'Cian', value: '#06b6d4' }
+  ];
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span>Tu Perfil</span>
           {!isEditing ? (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setIsEditing(true)}
-            >
-              Editar
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleSyncAll}
+                disabled={isSyncing}
+                className="flex items-center gap-1"
+              >
+                <Cloud className="h-4 w-4" />
+                {isSyncing ? 'Sincronizando...' : 'Sincronizar'}
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setIsEditing(true)}
+              >
+                Editar
+              </Button>
+            </div>
           ) : (
             <div className="flex items-center gap-2">
               <Button 
@@ -150,7 +198,7 @@ const UserProfile: React.FC<UserProfileProps> = ({
         <div className="flex flex-col sm:flex-row items-center gap-4">
           <Avatar className="h-16 w-16">
             <AvatarImage src={user.user_metadata?.avatar_url || ''} />
-            <AvatarFallback style={{ backgroundColor: favoriteColor || 'var(--primary)' }}>
+            <AvatarFallback style={{ backgroundColor: selectedColor || favoriteColor || 'var(--primary)' }}>
               {displayName?.charAt(0) || username?.charAt(0) || user.email?.charAt(0) || '?'}
             </AvatarFallback>
           </Avatar>
@@ -186,6 +234,24 @@ const UserProfile: React.FC<UserProfileProps> = ({
                 placeholder="Tu nombre visible"
               />
             </div>
+            
+            <div className="space-y-1">
+              <Label>Color favorito</Label>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {colorOptions.map((color) => (
+                  <button
+                    key={color.value}
+                    type="button"
+                    className={`w-8 h-8 rounded-full focus:ring-2 focus:ring-offset-2 ${
+                      selectedColor === color.value ? 'ring-2 ring-offset-2' : ''
+                    }`}
+                    style={{ backgroundColor: color.value }}
+                    onClick={() => setSelectedColor(color.value)}
+                    title={color.name}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4 mt-4">
@@ -206,6 +272,13 @@ const UserProfile: React.FC<UserProfileProps> = ({
           </div>
         )}
       </CardContent>
+      
+      <CardFooter className="flex justify-center">
+        <div className="flex items-center text-xs text-muted-foreground gap-1">
+          <Cloud className="h-3 w-3" />
+          <span>Datos sincronizados con la nube</span>
+        </div>
+      </CardFooter>
     </Card>
   );
 };
