@@ -1,6 +1,7 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useEffect } from 'react';
 import { Prize } from '../utils/prizes';
+import { useTheme } from '@/hooks/useTheme';
 
 interface RouletteWheelProps {
   prizes: Prize[];
@@ -15,6 +16,27 @@ const RouletteWheel: React.FC<RouletteWheelProps> = ({
   spinAngle,
   spinDuration
 }) => {
+  const wheelRef = useRef<SVGSVGElement>(null);
+  const { theme } = useTheme();
+  
+  // Efecto para animar el inicio del giro con un pequeño rebote
+  useEffect(() => {
+    if (spinning && wheelRef.current) {
+      wheelRef.current.animate(
+        [
+          { transform: 'rotate(0deg) scale(1)' },
+          { transform: 'rotate(-20deg) scale(1.03)', offset: 0.1 },
+          { transform: `rotate(${spinAngle}deg) scale(1)` }
+        ],
+        {
+          duration: spinDuration * 1000,
+          easing: 'cubic-bezier(0.2, 0.4, 0.1, 1)',
+          fill: 'forwards'
+        }
+      );
+    }
+  }, [spinning, spinAngle, spinDuration]);
+  
   const segments = useMemo(() => {
     const count = prizes.length;
     const anglePerSegment = 360 / count;
@@ -81,13 +103,8 @@ const RouletteWheel: React.FC<RouletteWheelProps> = ({
     });
   }, [prizes]);
   
-  // Style for wheel rotation
-  const wheelStyle = {
-    '--spin-angle': `${spinAngle}deg`,
-    '--spin-duration': `${spinDuration}s`,
-    transform: spinning ? 'rotate(var(--spin-angle))' : 'rotate(0deg)',
-    transition: spinning ? 'transform var(--spin-duration) cubic-bezier(0.3, 0.1, 0.1, 1)' : 'none'
-  } as React.CSSProperties;
+  // Efectos de iluminación y sombras dependiendo del tema
+  const isLightTheme = theme === 'light';
   
   return (
     <div className="relative mx-auto w-fit">
@@ -95,17 +112,17 @@ const RouletteWheel: React.FC<RouletteWheelProps> = ({
       <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1 w-0 h-0 border-l-[18px] border-r-[18px] border-t-[30px] border-l-transparent border-r-transparent border-t-red-600 z-20 filter drop-shadow-lg"></div>
       
       {/* Wheel Container with Enhanced Shadow */}
-      <div className="relative rounded-full overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.3)]">
+      <div className="relative rounded-full overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.3)] dark:shadow-[0_10px_40px_rgba(0,0,0,0.5)]">
         <svg 
+          ref={wheelRef}
           width="400" 
           height="400" 
           viewBox="0 0 400 400" 
           className="wheel-container transition-transform duration-300"
-          style={wheelStyle}
         >
           <defs>
             <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-              <feDropShadow dx="0" dy="0" stdDeviation="12" floodColor="#00000055" />
+              <feDropShadow dx="0" dy="0" stdDeviation="12" floodColor={isLightTheme ? "#00000055" : "#00000088"} />
             </filter>
             <filter id="inner-glow">
               <feGaussianBlur stdDeviation="3" result="blur" />
@@ -119,11 +136,15 @@ const RouletteWheel: React.FC<RouletteWheelProps> = ({
               <stop offset="0%" stopColor="white" stopOpacity="0.3" />
               <stop offset="100%" stopColor="white" stopOpacity="0.05" />
             </linearGradient>
+            <radialGradient id="spinGlow" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+              <stop offset="0%" stopColor={isLightTheme ? "#ffffff" : "#ffffff"} stopOpacity="0.4" />
+              <stop offset="100%" stopColor={isLightTheme ? "#ffffff" : "#ffffff"} stopOpacity="0" />
+            </radialGradient>
           </defs>
           
           {/* Outer circle with enhanced border */}
-          <circle cx="200" cy="200" r="195" fill="#1a1a1a" filter="url(#shadow)" />
-          <circle cx="200" cy="200" r="190" fill="none" stroke="#ffffff" strokeWidth="2" opacity="0.2" />
+          <circle cx="200" cy="200" r="195" fill={isLightTheme ? "#1a1a1a" : "#111111"} filter="url(#shadow)" />
+          <circle cx="200" cy="200" r="190" fill="none" stroke={isLightTheme ? "#ffffff" : "#333333"} strokeWidth="2" opacity="0.2" />
           
           {/* Segments with enhanced styling */}
           <g className="wheel-segments">
@@ -133,9 +154,9 @@ const RouletteWheel: React.FC<RouletteWheelProps> = ({
                 <path 
                   d={segment.path} 
                   fill={segment.fillColor} 
-                  stroke="#ffffff" 
+                  stroke={isLightTheme ? "#ffffff" : "#333333"} 
                   strokeWidth="1.5"
-                  className="transition-all duration-300 ease-in-out"
+                  className="transition-all duration-300 ease-in-out hover:brightness-110"
                 />
                 
                 {/* Glossy overlay */}
@@ -149,7 +170,7 @@ const RouletteWheel: React.FC<RouletteWheelProps> = ({
                 <text
                   x={segment.textX}
                   y={segment.textY}
-                  fontSize="13"
+                  fontSize="14"
                   fontWeight="bold"
                   fill="#ffffff"
                   textAnchor="middle"
@@ -165,11 +186,11 @@ const RouletteWheel: React.FC<RouletteWheelProps> = ({
           </g>
           
           {/* Center hub with enhanced styling */}
-          <circle cx="200" cy="200" r="35" fill="#3a3a3a" stroke="#ffffff" strokeWidth="3" />
-          <circle cx="200" cy="200" r="30" fill="#f8f8f8" stroke="#d1d1d1" strokeWidth="2" filter="url(#inner-glow)" />
+          <circle cx="200" cy="200" r="35" fill={isLightTheme ? "#3a3a3a" : "#222222"} stroke={isLightTheme ? "#ffffff" : "#333333"} strokeWidth="3" />
+          <circle cx="200" cy="200" r="30" fill={isLightTheme ? "#f8f8f8" : "#444444"} stroke={isLightTheme ? "#d1d1d1" : "#555555"} strokeWidth="2" filter="url(#inner-glow)" />
           
           {/* Decorative pattern in center */}
-          <circle cx="200" cy="200" r="20" fill="#3a3a3a" opacity="0.2" />
+          <circle cx="200" cy="200" r="20" fill={isLightTheme ? "#3a3a3a" : "#222222"} opacity="0.2" />
           
           {/* Decorative dots around center with improved styling */}
           {[...Array(12)].map((_, i) => {
@@ -177,20 +198,33 @@ const RouletteWheel: React.FC<RouletteWheelProps> = ({
             const x = 200 + 50 * Math.cos(angle);
             const y = 200 + 50 * Math.sin(angle);
             return (
-              <circle key={i} cx={x} cy={y} r="3.5" fill="#1a1a1a" stroke="#ffffff" strokeWidth="0.5" />
+              <circle 
+                key={i} 
+                cx={x} 
+                cy={y} 
+                r="3.5" 
+                fill={isLightTheme ? "#1a1a1a" : "#333333"} 
+                stroke={isLightTheme ? "#ffffff" : "#555555"} 
+                strokeWidth="0.5" 
+              />
             );
           })}
+          
+          {/* Spin glow effect (visible only during spinning) */}
+          {spinning && (
+            <circle cx="200" cy="200" r="180" fill="url(#spinGlow)" className="animate-pulse-light" />
+          )}
         </svg>
         
         {/* Enhanced reflection overlay - glass effect */}
-        <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent pointer-events-none rounded-full"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent dark:from-white/10 pointer-events-none rounded-full"></div>
       </div>
       
       {/* Enhanced lighting effects during spinning */}
       {spinning && (
         <>
           <div className="absolute inset-0 animate-pulse-light rounded-full bg-gradient-to-tr from-white/0 via-white/10 to-white/0 pointer-events-none"></div>
-          <div className="absolute -inset-4 bg-primary/5 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute -inset-4 bg-primary/5 dark:bg-primary/10 rounded-full blur-3xl animate-pulse"></div>
         </>
       )}
     </div>

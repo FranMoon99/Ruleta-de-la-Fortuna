@@ -108,15 +108,26 @@
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+  
+  /* Smooth transitions for theme changes */
+  body, html {
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+  
+  /* Improved mobile scroll experience */
+  html {
+    -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
+  }
 }
 
 @layer components {
   .glass-panel {
-    @apply bg-white/20 backdrop-blur-lg border border-white/30 rounded-xl shadow-glass;
+    @apply bg-white/20 dark:bg-black/20 backdrop-blur-lg border border-white/30 dark:border-white/10 rounded-xl shadow-glass;
   }
   
   .prize-card {
-    @apply bg-white/80 backdrop-blur-sm border border-white/30 rounded-lg p-4 transition-all duration-300 shadow-prize hover:shadow-lg;
+    @apply bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-white/30 dark:border-white/10 rounded-lg p-4 transition-all duration-300 shadow-prize hover:shadow-lg;
   }
   
   .control-button {
@@ -152,6 +163,24 @@
   .spin-button-glow {
     box-shadow: 0 0 15px theme('colors.primary.DEFAULT'), 0 0 30px theme('colors.primary.DEFAULT');
     animation: pulse-glow 2s infinite;
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 640px) {
+    .container {
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+  }
+
+  /* Improved transitions */
+  .theme-transition {
+    @apply transition-all duration-300 ease-in-out;
+  }
+  
+  /* Dark mode specific styles */
+  .dark .dark-glow {
+    text-shadow: 0 0 8px theme('colors.primary.DEFAULT');
   }
   
   @keyframes pulse-glow {
