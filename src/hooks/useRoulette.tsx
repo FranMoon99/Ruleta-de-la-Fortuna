@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Prize, defaultPrizes, generateRandomAngle, calculatePrizeIndex, loadCustomPrizes, saveSpinResult, loadSpinHistory } from '../utils/prizes';
 import { playSpinSound, playWinSound, getRandomSpinDuration } from '../utils/animations';
@@ -60,7 +59,6 @@ export const useRoulette = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const resultTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Cargar premios al inicio y cuando cambia el usuario
   useEffect(() => {
     const loadPrizes = async () => {
       const customPrizes = await loadCustomPrizes();
@@ -74,7 +72,6 @@ export const useRoulette = () => {
     loadPrizes();
   }, [user?.id]);
   
-  // Escuchar cambios en la autenticación
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
@@ -88,7 +85,6 @@ export const useRoulette = () => {
       }
     );
     
-    // Verificar sesión actual al montar
     const checkCurrentSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
@@ -103,7 +99,6 @@ export const useRoulette = () => {
     };
   }, []);
   
-  // Cargar puntos y datos del usuario cuando cambia el usuario
   useEffect(() => {
     const fetchUserData = async () => {
       if (!user) return;
@@ -111,37 +106,15 @@ export const useRoulette = () => {
       setIsLoadingUserData(true);
       
       try {
-        // Obtener los puntos del usuario con una consulta más segura
         const { data: pointsData, error: pointsError } = await supabase
-          .rpc('get_user_points', { user_id_param: user.id })
-          .then(response => {
-            if (response.error) {
-              console.error('RPC error:', response.error);
-              // Fallback to direct query if RPC fails
-              return supabase
-                .from('user_points' as any)
-                .select('total_points')
-                .eq('user_id', user.id)
-                .single();
-            }
-            return response;
-          });
+          .rpc('get_user_points', { user_id_param: user.id });
         
-        if (pointsError && pointsError.code !== 'PGRST116') {
+        if (pointsError) {
           console.error('Error cargando puntos:', pointsError);
+        } else if (pointsData !== null) {
+          setPoints(pointsData);
         }
         
-        // Safely access total_points regardless of data structure
-        if (pointsData) {
-          // Handle both RPC result (single value) or direct query (object with total_points)
-          const points = typeof pointsData === 'number' 
-            ? pointsData 
-            : pointsData.total_points || 0;
-          
-          setPoints(points);
-        }
-        
-        // Obtener información del perfil con verificación de tipo
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('*')
@@ -153,39 +126,22 @@ export const useRoulette = () => {
         }
         
         if (profileData) {
-          // Safely access total_spins with type checking
           const spins = (profileData as any).total_spins || 0;
           setTotalSpins(spins);
         }
         
-        // Cargar historial de giros con manejo de errores y tipado
         const { data: historyData, error: historyError } = await supabase
           .rpc('get_user_spin_history', { 
             user_id_param: user.id,
-            limit_count: 30
-          })
-          .then(response => {
-            if (response.error) {
-              console.error('RPC error:', response.error);
-              // Fallback to direct query
-              return supabase
-                .from('resultados' as any)
-                .select('id, fecha, premio_id, points_earned')
-                .eq('user_id', user.id)
-                .order('fecha' as any, { ascending: false })
-                .limit(30);
-            }
-            return response;
+            limit_count: 30 
           });
         
         if (historyError) {
           console.error('Error cargando historial:', historyError);
         }
         
-        if (historyData && historyData.length > 0) {
-          // Convertir los resultados a SpinResult con manejo de tipo seguro
+        if (historyData && Array.isArray(historyData) && historyData.length > 0) {
           const spinResults: SpinResult[] = historyData.map((item: any) => {
-            // Find prize by ID or create a fallback
             const prize = prizes.find(p => p.id === item.premio_id) || {
               id: item.premio_id || 'unknown',
               name: 'Premio desconocido',
@@ -211,7 +167,6 @@ export const useRoulette = () => {
     fetchUserData();
   }, [user, prizes]);
   
-  // Cargar estadísticas desde localStorage
   useEffect(() => {
     const savedStats = localStorage.getItem('roulette-statistics');
     if (savedStats) {
@@ -219,7 +174,6 @@ export const useRoulette = () => {
     }
   }, []);
   
-  // Guardar configuración de sonido en localStorage
   useEffect(() => {
     localStorage.setItem('roulette-sound-settings', JSON.stringify(soundSettings));
   }, [soundSettings]);
@@ -227,29 +181,23 @@ export const useRoulette = () => {
   const spin = useCallback(async () => {
     if (spinning) return;
     
-    // Stop previous audio if playing
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
     }
     
-    // Clear any pending timeout
     if (resultTimeoutRef.current) {
       clearTimeout(resultTimeoutRef.current);
     }
     
-    // Start spinning
     setSpinning(true);
     
-    // Generate random angle
     const angle = generateRandomAngle(prizes.length);
     setSpinAngle(angle);
     
-    // Set random duration
     const duration = getRandomSpinDuration();
     setSpinDuration(duration);
     
-    // Play spin sound if enabled
     if (soundSettings.spinSound) {
       audioRef.current = playSpinSound();
       if (audioRef.current) {
@@ -257,7 +205,6 @@ export const useRoulette = () => {
       }
     }
     
-    // Determine result after spinning
     resultTimeoutRef.current = setTimeout(async () => {
       const resultIndex = calculatePrizeIndex(angle, prizes.length);
       const prize = prizes[resultIndex];
@@ -267,22 +214,19 @@ export const useRoulette = () => {
         timestamp: new Date()
       };
       
-      // Actualizar estadísticas
       setStatistics(prevStats => {
         const newStats = { ...prevStats };
         newStats[prize.id] = (newStats[prize.id] || 0) + 1;
         
-        // Guardar en localStorage
         localStorage.setItem('roulette-statistics', JSON.stringify(newStats));
         
         return newStats;
       });
       
       setCurrentResult(result);
-      setHistory(prev => [result, ...prev].slice(0, 30)); // Keep 30 most recent
+      setHistory(prev => [result, ...prev].slice(0, 30));
       setSpinning(false);
       
-      // Play win sound if enabled
       if (soundSettings.winSound) {
         const winAudio = new Audio();
         winAudio.src = 'https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3';
@@ -290,19 +234,26 @@ export const useRoulette = () => {
         winAudio.play();
       }
       
-      // Si el usuario está autenticado, guardar el resultado en Supabase
       if (user) {
         try {
-          await saveSpinResult(prize.id, user.id);
+          const { error } = await supabase
+            .rpc('save_spin_result', {
+              user_id_param: user.id,
+              premio_id_param: prize.id,
+              points_earned_param: prize.value
+            });
+            
+          if (error) {
+            throw error;
+          }
           
-          // Actualizar los puntos localmente sin necesidad de recargar
           setPoints(prev => prev + prize.value);
           setTotalSpins(prev => prev + 1);
         } catch (error) {
           console.error("Error guardando el resultado:", error);
         }
       }
-    }, duration * 1000 + 500); // Add a little buffer for the animation
+    }, duration * 1000 + 500);
   }, [prizes, spinning, user, soundSettings]);
   
   const updatePrizes = useCallback((newPrizes: Prize[]) => {
@@ -327,12 +278,10 @@ export const useRoulette = () => {
     setCustomMode(prev => !prev);
   }, []);
   
-  // Función para actualizar manualmente los puntos (para pruebas)
   const updatePoints = useCallback((newPoints: number) => {
     setPoints(newPoints);
   }, []);
   
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (audioRef.current) {

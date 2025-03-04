@@ -1,271 +1,211 @@
 
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
-} from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
-import { User, Trophy, Medal, BadgeCheck, RotateCcw, Edit2, Save } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { User, Mail, Award, Check, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from '@/components/ui/use-toast';
 
 interface UserProfileProps {
-  user: any;
+  user: any | null;
   points: number;
   totalSpins: number;
   favoriteColor?: string;
-  onUpdateProfile?: () => void;
-}
-
-interface ProfileData {
-  id: string;
-  created_at: string;
-  updated_at: string;
-  username?: string;
-  display_name?: string;
-  avatar_url?: string;
-  total_spins?: number;
-  favorite_prize?: string;
-  [key: string]: any; // Allow for any additional properties
 }
 
 const UserProfile: React.FC<UserProfileProps> = ({ 
   user, 
   points, 
-  totalSpins, 
-  favoriteColor,
-  onUpdateProfile 
+  totalSpins,
+  favoriteColor 
 }) => {
   const [isEditing, setIsEditing] = useState(false);
+  const [username, setUsername] = useState(user?.user_metadata?.username || '');
   const [displayName, setDisplayName] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [profileDetails, setProfileDetails] = useState<ProfileData | null>(null);
-  const { toast } = useToast();
-  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Cargar datos del perfil
-  useEffect(() => {
-    const fetchProfileDetails = async () => {
-      if (!user) return;
-      
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-        
-        if (error) throw error;
-        
-        // Set profileDetails with type safety
-        const profileData = data as ProfileData;
-        setProfileDetails(profileData);
-        
-        // Set displayName from profile data with fallbacks
-        setDisplayName(
-          profileData.display_name || 
-          profileData.username || 
-          user.email
-        );
-      } catch (error: any) {
-        console.error('Error al cargar el perfil:', error.message);
-      }
-    };
-    
-    fetchProfileDetails();
-  }, [user]);
-
-  // Manejar actualización del perfil
-  const handleUpdateProfile = async () => {
+  const handleSaveProfile = async () => {
     if (!user) return;
     
-    setLoading(true);
-    
+    setIsLoading(true);
     try {
-      // Create an update object with only valid fields
-      const updateData: any = {};
-      
-      // Only add display_name if profiles table has this column
-      if (displayName) {
-        updateData.display_name = displayName;
-      }
-      
+      // Update the profile in Supabase
       const { error } = await supabase
         .from('profiles')
-        .update(updateData)
+        .update({ 
+          username: username,
+          // We use any type here since we know these fields exist in our database
+          // but might not be reflected in TypeScript types yet
+          ...(displayName ? { display_name: displayName } as any : {})
+        })
         .eq('id', user.id);
       
       if (error) throw error;
       
       toast({
         title: "Perfil actualizado",
-        description: "Tu perfil ha sido actualizado correctamente"
+        description: "Tus datos han sido guardados correctamente."
       });
       
       setIsEditing(false);
-      if (onUpdateProfile) onUpdateProfile();
     } catch (error: any) {
       toast({
-        title: "Error al actualizar el perfil",
-        description: error.message,
+        title: "Error al actualizar perfil",
+        description: error.message || "Ha ocurrido un error inesperado",
         variant: "destructive"
       });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  // Si no hay usuario, mostrar mensaje para iniciar sesión
+  // Cargar datos del perfil desde Supabase
+  React.useEffect(() => {
+    const loadProfile = async () => {
+      if (!user) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('username, display_name')
+          .eq('id', user.id)
+          .single();
+        
+        if (error) throw error;
+        
+        if (data) {
+          setUsername(data.username || '');
+          // Type assertion to access new fields
+          setDisplayName((data as any).display_name || '');
+        }
+      } catch (error) {
+        console.error("Error loading profile:", error);
+      }
+    };
+    
+    loadProfile();
+  }, [user]);
+  
   if (!user) {
     return (
-      <Card className="glass-panel">
-        <CardHeader className="text-center">
+      <Card>
+        <CardHeader>
           <CardTitle>Perfil de Usuario</CardTitle>
-          <CardDescription>
-            Inicia sesión para ver tu perfil
-          </CardDescription>
+          <CardDescription>Inicia sesión para ver y editar tu perfil</CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col items-center">
-          <Avatar className="h-24 w-24 mb-4">
-            <AvatarFallback className="bg-primary/20">
-              <User className="h-12 w-12 text-primary/60" />
-            </AvatarFallback>
-          </Avatar>
-          <Button onClick={() => navigate('/auth')}>
-            Iniciar Sesión
-          </Button>
+        <CardContent className="flex flex-col items-center justify-center py-6">
+          <User className="h-12 w-12 text-muted-foreground mb-3 opacity-50" />
+          <p className="text-muted-foreground text-center">
+            Accede a tu cuenta para gestionar tu perfil y ver tus estadísticas
+          </p>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card className="glass-panel">
+    <Card>
       <CardHeader>
-        <div className="flex justify-between items-center">
-          <CardTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            Perfil de Usuario
-          </CardTitle>
+        <CardTitle className="flex items-center justify-between">
+          <span>Tu Perfil</span>
           {!isEditing ? (
             <Button 
-              variant="ghost" 
+              variant="outline" 
               size="sm" 
               onClick={() => setIsEditing(true)}
-              className="h-8 gap-1"
             >
-              <Edit2 className="h-3.5 w-3.5" />
-              <span className="sr-only sm:not-sr-only sm:text-xs">Editar</span>
+              Editar
             </Button>
           ) : (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => setIsEditing(false)}
-              className="h-8 text-xs"
-            >
-              Cancelar
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleSaveProfile}
+                disabled={isLoading}
+                className="bg-green-500/10 hover:bg-green-500/20"
+              >
+                <Check className="h-4 w-4 mr-1" />
+                Guardar
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setIsEditing(false)}
+                disabled={isLoading}
+                className="bg-red-500/10 hover:bg-red-500/20"
+              >
+                <X className="h-4 w-4 mr-1" />
+                Cancelar
+              </Button>
+            </div>
           )}
-        </div>
+        </CardTitle>
       </CardHeader>
       
       <CardContent className="space-y-4">
         <div className="flex flex-col sm:flex-row items-center gap-4">
-          <Avatar className="h-20 w-20">
-            <AvatarFallback 
-              className="text-xl font-semibold"
-              style={{ backgroundColor: favoriteColor || 'var(--primary)' }}
-            >
-              {displayName?.substring(0, 2).toUpperCase() || user.email?.substring(0, 2).toUpperCase()}
+          <Avatar className="h-16 w-16">
+            <AvatarImage src={user.user_metadata?.avatar_url || ''} />
+            <AvatarFallback style={{ backgroundColor: favoriteColor || 'var(--primary)' }}>
+              {displayName?.charAt(0) || username?.charAt(0) || user.email?.charAt(0) || '?'}
             </AvatarFallback>
           </Avatar>
           
           <div className="flex-1 text-center sm:text-left">
-            {isEditing ? (
-              <div className="space-y-2">
-                <Label htmlFor="displayName">Nombre a mostrar</Label>
-                <Input
-                  id="displayName"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="¿Cómo quieres que te llamemos?"
-                />
-              </div>
-            ) : (
-              <>
-                <h3 className="text-xl font-semibold">{displayName || user.email}</h3>
-                <p className="text-sm text-muted-foreground">{user.email}</p>
-              </>
-            )}
+            <h3 className="text-lg font-medium">
+              {displayName || username || 'Usuario'}
+            </h3>
+            <p className="text-sm text-muted-foreground flex items-center justify-center sm:justify-start gap-1">
+              <Mail className="h-3 w-3" /> {user.email}
+            </p>
           </div>
         </div>
         
-        <Separator />
-        
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-primary/10 rounded-lg p-3 text-center">
-            <Trophy className="h-5 w-5 mx-auto mb-1 text-primary" />
-            <p className="text-xs text-muted-foreground">Puntos Acumulados</p>
-            <p className="text-xl font-bold">{points || 0}</p>
+        {isEditing ? (
+          <div className="space-y-3 pt-2">
+            <div className="space-y-1">
+              <Label htmlFor="username">Nombre de usuario</Label>
+              <Input 
+                id="username" 
+                value={username} 
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Tu nombre de usuario"
+              />
+            </div>
+            
+            <div className="space-y-1">
+              <Label htmlFor="displayName">Nombre a mostrar</Label>
+              <Input 
+                id="displayName" 
+                value={displayName} 
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="Tu nombre visible"
+              />
+            </div>
           </div>
-          
-          <div className="bg-accent/10 rounded-lg p-3 text-center">
-            <RotateCcw className="h-5 w-5 mx-auto mb-1 text-accent" />
-            <p className="text-xs text-muted-foreground">Total de Giros</p>
-            <p className="text-xl font-bold">{totalSpins || 0}</p>
-          </div>
-        </div>
-        
-        {profileDetails?.total_spins > 0 && (
-          <div className="bg-secondary/10 rounded-lg p-3">
-            <h4 className="text-sm font-medium mb-2 flex items-center gap-1">
-              <BadgeCheck className="h-4 w-4" />
-              Logros
-            </h4>
-            <div className="flex flex-wrap gap-2">
-              {profileDetails.total_spins >= 1 && (
-                <Badge variant="outline" className="bg-primary/5">Primer Giro</Badge>
-              )}
-              {profileDetails.total_spins >= 10 && (
-                <Badge variant="outline" className="bg-primary/5">10 Giros</Badge>
-              )}
-              {profileDetails.total_spins >= 50 && (
-                <Badge variant="outline" className="bg-primary/5">50 Giros</Badge>
-              )}
-              {points >= 1000 && (
-                <Badge variant="outline" className="bg-primary/5">1000 Puntos</Badge>
-              )}
-              {points >= 5000 && (
-                <Badge variant="outline" className="bg-primary/5">5000 Puntos</Badge>
-              )}
+        ) : (
+          <div className="grid grid-cols-2 gap-4 mt-4">
+            <div className="bg-primary/10 p-4 rounded-lg text-center">
+              <div className="text-3xl font-bold">{points}</div>
+              <div className="text-xs text-muted-foreground mt-1">Puntos Totales</div>
+            </div>
+            
+            <div className="bg-secondary/10 p-4 rounded-lg text-center">
+              <div className="text-3xl font-bold">{totalSpins}</div>
+              <div className="text-xs text-muted-foreground mt-1">Giros Realizados</div>
+            </div>
+            
+            <div className="col-span-2 bg-accent/10 p-4 rounded-lg flex items-center justify-center gap-2">
+              <Award className="h-5 w-5 text-accent-foreground" />
+              <span>Nivel: {Math.floor(points / 1000) + 1}</span>
             </div>
           </div>
         )}
       </CardContent>
-      
-      {isEditing && (
-        <CardFooter>
-          <Button 
-            onClick={handleUpdateProfile} 
-            disabled={loading} 
-            className="w-full flex items-center gap-1"
-          >
-            <Save className="h-4 w-4" />
-            Guardar Cambios
-          </Button>
-        </CardFooter>
-      )}
     </Card>
   );
 };

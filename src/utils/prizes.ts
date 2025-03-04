@@ -81,7 +81,7 @@ export const loadCustomPrizes = async (): Promise<Prize[] | null> => {
   return saved ? JSON.parse(saved) : null;
 };
 
-// Guardar un resultado en Supabase
+// Guardar un resultado en Supabase usando RPC
 export const saveSpinResult = async (prizeId: string, userId?: string): Promise<boolean> => {
   try {
     // Primero verificar si el usuario está autenticado
@@ -94,12 +94,12 @@ export const saveSpinResult = async (prizeId: string, userId?: string): Promise<
     const prize = defaultPrizes.find(p => p.id === prizeId);
     const points = prize ? prize.value : 0;
     
-    // Si hay un usuario autenticado, guardar el resultado
+    // Si hay un usuario autenticado, guardar el resultado usando RPC
     if (userId) {
-      const { error } = await supabase.from('resultados').insert({
-        user_id: userId,
-        premio_id: prizeId,
-        points_earned: points
+      const { error } = await supabase.rpc('save_spin_result', {
+        user_id_param: userId,
+        premio_id_param: prizeId,
+        points_earned_param: points
       });
       
       if (error) {
@@ -116,7 +116,7 @@ export const saveSpinResult = async (prizeId: string, userId?: string): Promise<
   }
 };
 
-// Cargar el historial de resultados con más detalles
+// Cargar el historial de resultados usando RPC
 export const loadSpinHistory = async (): Promise<any[]> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -125,12 +125,10 @@ export const loadSpinHistory = async (): Promise<any[]> => {
       return [];
     }
     
-    const { data, error } = await supabase
-      .from('resultados')
-      .select('*, premio_id, fecha, points_earned, special_event')
-      .eq('user_id', session.user.id)
-      .order('fecha', { ascending: false })
-      .limit(30);
+    const { data, error } = await supabase.rpc('get_user_spin_history', {
+      user_id_param: session.user.id,
+      limit_count: 30
+    });
     
     if (error) {
       console.error('Error al cargar el historial:', error);
@@ -144,7 +142,7 @@ export const loadSpinHistory = async (): Promise<any[]> => {
   }
 };
 
-// Cargar los puntos del usuario
+// Cargar los puntos del usuario usando RPC
 export const loadUserPoints = async (userId?: string): Promise<number> => {
   try {
     if (!userId) {
@@ -154,18 +152,16 @@ export const loadUserPoints = async (userId?: string): Promise<number> => {
     
     if (!userId) return 0;
     
-    const { data, error } = await supabase
-      .from('user_points')
-      .select('total_points')
-      .eq('user_id', userId)
-      .single();
+    const { data, error } = await supabase.rpc('get_user_points', {
+      user_id_param: userId
+    });
     
-    if (error && error.code !== 'PGRST116') { // PGRST116 es "no se encontraron resultados"
+    if (error) {
       console.error('Error al cargar los puntos:', error);
       return 0;
     }
     
-    return data ? data.total_points : 0;
+    return data || 0;
   } catch (error) {
     console.error('Error al cargar los puntos:', error);
     return 0;

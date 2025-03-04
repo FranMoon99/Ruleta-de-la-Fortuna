@@ -58,3 +58,38 @@ export const getSession = async () => {
   const { data } = await supabase.auth.getSession();
   return data.session;
 };
+
+// Expose our RPC functions with proper typing
+export const getUserPoints = async (userId: string): Promise<number> => {
+  const { data, error } = await supabase.rpc('get_user_points', { user_id_param: userId });
+  if (error) throw error;
+  return data || 0;
+};
+
+export const getUserSpinHistory = async (userId: string, limit = 30): Promise<any[]> => {
+  const { data, error } = await supabase.rpc('get_user_spin_history', { 
+    user_id_param: userId,
+    limit_count: limit
+  });
+  if (error) throw error;
+  return data || [];
+};
+
+export const getLeaderboard = async (limit = 5): Promise<any[]> => {
+  const { data, error } = await supabase.rpc('get_leaderboard', { limit_count: limit });
+  if (error) throw error;
+  return data || [];
+};
+
+export const saveSpinResult = async (
+  userId: string, 
+  prizeId: string, 
+  pointsEarned = 0
+): Promise<void> => {
+  const { error } = await supabase.rpc('save_spin_result', {
+    user_id_param: userId,
+    premio_id_param: prizeId,
+    points_earned_param: pointsEarned
+  });
+  if (error) throw error;
+};

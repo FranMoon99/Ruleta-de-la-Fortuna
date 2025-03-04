@@ -35,22 +35,9 @@ const PointsDisplay: React.FC<PointsDisplayProps> = ({
       
       setLoading(true);
       try {
-        // Using a raw SQL query to bypass type issues with Supabase
+        // Using RPC function instead of direct table query
         const { data, error } = await supabase
-          .rpc('get_leaderboard', { limit_count: 5 })
-          .then(response => {
-            if (response.error) throw response.error;
-            return { data: response.data, error: null };
-          })
-          .catch(error => {
-            console.error('Error executing RPC get_leaderboard:', error);
-            // Fallback to direct query with type casting
-            return supabase
-              .from('user_points' as any)
-              .select('user_id, total_points, profiles!inner(display_name, username)')
-              .order('total_points' as any, { ascending: false })
-              .limit(5);
-          });
+          .rpc('get_leaderboard', { limit_count: 5 });
         
         if (error) throw error;
         
@@ -139,11 +126,9 @@ const PointsDisplay: React.FC<PointsDisplayProps> = ({
                 {leaderboard.map((entry, index) => {
                   const isCurrentUser = entry.user_id === user.id;
                   // Handle potential data structure differences
-                  const displayName = (entry.profiles?.display_name || 
-                                      entry.profiles?.username || 
-                                      entry.display_name ||
+                  const displayName = entry.display_name || 
                                       entry.username ||
-                                      entry.user_id?.substring(0, 8));
+                                      entry.user_id?.substring(0, 8);
                   
                   return (
                     <div 
