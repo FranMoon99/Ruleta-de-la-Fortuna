@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 export interface Prize {
@@ -80,7 +81,7 @@ export const loadCustomPrizes = async (): Promise<Prize[] | null> => {
   return saved ? JSON.parse(saved) : null;
 };
 
-// Nueva función para guardar un resultado en Supabase
+// Guardar un resultado en Supabase
 export const saveSpinResult = async (prizeId: string, userId?: string): Promise<boolean> => {
   try {
     // Primero verificar si el usuario está autenticado
@@ -89,11 +90,16 @@ export const saveSpinResult = async (prizeId: string, userId?: string): Promise<
       userId = session?.user?.id;
     }
     
+    // Encontrar el premio para obtener su valor
+    const prize = defaultPrizes.find(p => p.id === prizeId);
+    const points = prize ? prize.value : 0;
+    
     // Si hay un usuario autenticado, guardar el resultado
     if (userId) {
       const { error } = await supabase.from('resultados').insert({
         user_id: userId,
-        premio_id: prizeId
+        premio_id: prizeId,
+        points_earned: points
       });
       
       if (error) {
@@ -110,7 +116,7 @@ export const saveSpinResult = async (prizeId: string, userId?: string): Promise<
   }
 };
 
-// Nueva función para cargar el historial de resultados
+// Cargar el historial de resultados con más detalles
 export const loadSpinHistory = async (): Promise<any[]> => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -121,10 +127,10 @@ export const loadSpinHistory = async (): Promise<any[]> => {
     
     const { data, error } = await supabase
       .from('resultados')
-      .select('*, premios(nombre)')
+      .select('*, premio_id, fecha, points_earned, special_event')
       .eq('user_id', session.user.id)
       .order('fecha', { ascending: false })
-      .limit(10);
+      .limit(30);
     
     if (error) {
       console.error('Error al cargar el historial:', error);
@@ -135,5 +141,33 @@ export const loadSpinHistory = async (): Promise<any[]> => {
   } catch (error) {
     console.error('Error al cargar el historial:', error);
     return [];
+  }
+};
+
+// Cargar los puntos del usuario
+export const loadUserPoints = async (userId?: string): Promise<number> => {
+  try {
+    if (!userId) {
+      const { data: { session } } = await supabase.auth.getSession();
+      userId = session?.user?.id;
+    }
+    
+    if (!userId) return 0;
+    
+    const { data, error } = await supabase
+      .from('user_points')
+      .select('total_points')
+      .eq('user_id', userId)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') { // PGRST116 es "no se encontraron resultados"
+      console.error('Error al cargar los puntos:', error);
+      return 0;
+    }
+    
+    return data ? data.total_points : 0;
+  } catch (error) {
+    console.error('Error al cargar los puntos:', error);
+    return 0;
   }
 };

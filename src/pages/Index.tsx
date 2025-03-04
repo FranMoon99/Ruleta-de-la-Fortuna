@@ -11,11 +11,13 @@ import StatisticsDisplay from '@/components/StatisticsDisplay';
 import SoundSettings from '@/components/SoundSettings';
 import CustomRouletteMode from '@/components/CustomRouletteMode';
 import ThemeToggle from '@/components/ThemeToggle';
+import UserProfile from '@/components/UserProfile';
+import PointsDisplay from '@/components/PointsDisplay';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Volume2, VolumeX, UserIcon, LogOut, BarChart2, History, Sliders } from 'lucide-react';
+import { Volume2, VolumeX, UserIcon, LogOut, BarChart2, History, Sliders, Award, User } from 'lucide-react';
 import { playClickSound } from '@/utils/animations';
 import { signOut } from '@/integrations/supabase/client';
 import { Toaster } from '@/components/ui/toaster';
@@ -35,6 +37,9 @@ const Index = () => {
     statistics,
     soundSettings,
     customMode,
+    points,
+    totalSpins,
+    isLoadingUserData,
     spin,
     updatePrizes,
     resetHistory,
@@ -138,7 +143,7 @@ const Index = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8 xl:gap-12 mt-10 md:mt-0">
             <div className="lg:col-span-1 order-3 lg:order-1">
               <Tabs defaultValue="history" className="h-full">
-                <TabsList className="grid grid-cols-3 mb-4 w-full">
+                <TabsList className="grid grid-cols-4 mb-4 w-full">
                   <TabsTrigger value="history" className="flex items-center gap-1" onClick={() => soundSettings.clickSound && playClickSound(soundSettings.masterVolume)}>
                     <History className="h-4 w-4" />
                     <span className="hidden sm:inline">Historial</span>
@@ -146,6 +151,10 @@ const Index = () => {
                   <TabsTrigger value="statistics" className="flex items-center gap-1" onClick={() => soundSettings.clickSound && playClickSound(soundSettings.masterVolume)}>
                     <BarChart2 className="h-4 w-4" />
                     <span className="hidden sm:inline">Estadísticas</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="profile" className="flex items-center gap-1" onClick={() => soundSettings.clickSound && playClickSound(soundSettings.masterVolume)}>
+                    <User className="h-4 w-4" />
+                    <span className="hidden sm:inline">Perfil</span>
                   </TabsTrigger>
                   <TabsTrigger value="settings" className="flex items-center gap-1" onClick={() => soundSettings.clickSound && playClickSound(soundSettings.masterVolume)}>
                     <Sliders className="h-4 w-4" />
@@ -162,6 +171,17 @@ const Index = () => {
                     statistics={statistics}
                     prizes={prizes}
                     onReset={resetStatistics}
+                  />
+                </TabsContent>
+                
+                <TabsContent value="profile" className="h-full space-y-4">
+                  <UserProfile 
+                    user={user}
+                    points={points}
+                    totalSpins={totalSpins}
+                    favoriteColor={currentResult?.prize.color.startsWith('roulette-') 
+                      ? `var(--${currentResult.prize.color.replace('roulette-', '')})` 
+                      : currentResult?.prize.color}
                   />
                 </TabsContent>
                 
@@ -214,8 +234,13 @@ const Index = () => {
               </div>
             </div>
             
-            <div className="lg:col-span-1 order-2 lg:order-3">
+            <div className="lg:col-span-1 order-2 lg:order-3 space-y-4">
               <PrizeDisplay result={currentResult} showAnimation={showWinAnimation} />
+              
+              <PointsDisplay 
+                user={user}
+                points={points}
+              />
             </div>
           </div>
         </main>
