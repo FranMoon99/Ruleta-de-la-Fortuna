@@ -88,18 +88,6 @@ export interface UserProfile {
   updated_at: string;
 }
 
-// User settings interface
-export interface UserSettings {
-  soundSettings: {
-    masterVolume: number;
-    spinSound: boolean;
-    winSound: boolean;
-    clickSound: boolean;
-  };
-  favoriteColor?: string;
-  customRoulettes?: any[];
-}
-
 // Expose our RPC functions with proper typing
 export const getUserPoints = async (userId: string): Promise<number> => {
   const { data, error } = await supabase.rpc('get_user_points', { 
@@ -143,13 +131,25 @@ export const saveSpinResult = async (
   if (error) throw error;
 };
 
+// User settings interface
+export interface UserSettings {
+  soundSettings: {
+    masterVolume: number;
+    spinSound: boolean;
+    winSound: boolean;
+    clickSound: boolean;
+  };
+  favoriteColor?: string;
+  customRoulettes?: any[];
+}
+
 export const saveUserSettings = async (
   userId: string,
   settings: UserSettings
 ): Promise<void> => {
   const { error } = await supabase.rpc('save_user_settings', {
     user_id_param: userId,
-    settings_json: settings as unknown as Record<string, any>
+    settings_json: settings
   });
   
   if (error) throw error;
@@ -161,7 +161,7 @@ export const getUserSettings = async (userId: string): Promise<UserSettings | nu
   });
   
   if (error) throw error;
-  return data as unknown as UserSettings || null;
+  return data || null;
 };
 
 export const saveCustomRoulette = async (
@@ -225,13 +225,7 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
   });
   
   if (error) throw error;
-  
-  // Fix the type issue by correctly typing the result
-  if (data && Array.isArray(data) && data.length > 0) {
-    return data[0] as unknown as UserProfile;
-  }
-  
-  return null;
+  return data || null;
 };
 
 // Stats synchronization functions
@@ -241,7 +235,7 @@ export const syncUserStats = async (
 ): Promise<void> => {
   const { error } = await supabase.rpc('sync_user_stats', {
     user_id_param: userId,
-    stats_json: stats as unknown as Record<string, any>
+    stats_json: stats
   });
   
   if (error) throw error;
@@ -253,5 +247,5 @@ export const getUserStats = async (userId: string): Promise<Record<string, numbe
   });
   
   if (error) throw error;
-  return data as unknown as Record<string, number> || {};
+  return data || {};
 };

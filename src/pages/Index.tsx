@@ -1,7 +1,7 @@
-
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useRoulette } from '@/hooks/useRoulette';
-import RouletteWheel from '@/components/roulette/RouletteWheel';
+import RouletteWheel from '@/components/RouletteWheel';
 import SpinButton from '@/components/SpinButton';
 import PrizeDisplay from '@/components/PrizeDisplay';
 import HistoryDisplay from '@/components/HistoryDisplay';
@@ -10,17 +10,19 @@ import StatisticsDisplay from '@/components/StatisticsDisplay';
 import SoundSettings from '@/components/SoundSettings';
 import CustomRouletteMode from '@/components/CustomRouletteMode';
 import ThemeToggle from '@/components/ThemeToggle';
+import UserProfile from '@/components/UserProfile';
 import PointsDisplay from '@/components/PointsDisplay';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Volume2, VolumeX, History, BarChart2, Sliders } from 'lucide-react';
+import { Volume2, VolumeX, UserIcon, LogOut, BarChart2, History, Sliders, Award, User } from 'lucide-react';
 import { playClickSound } from '@/utils/animations';
+import { signOut } from '@/integrations/supabase/client';
 import { Toaster } from '@/components/ui/toaster';
+import { useToast } from '@/components/ui/use-toast';
 import { defaultPrizes } from '@/utils/prizes';
 import { ThemeProvider } from '@/hooks/useTheme';
-import { useDelayedLoading } from '@/utils/performance';
 
 const Index = () => {
   const {
@@ -45,8 +47,7 @@ const Index = () => {
   } = useRoulette();
   
   const [showWinAnimation, setShowWinAnimation] = useState(false);
-  // Use delayed loading for smoother transitions
-  const isLoading = useDelayedLoading(isLoadingUserData, 300);
+  const { toast } = useToast();
   
   useEffect(() => {
     if (!spinning && currentResult) {
@@ -74,6 +75,22 @@ const Index = () => {
       HTMLAudioElement.prototype.play = originalPlay;
     };
   }, [soundSettings.masterVolume]);
+  
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Sesión cerrada",
+        description: "Has cerrado sesión correctamente"
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error al cerrar sesión",
+        description: error.message || "Ha ocurrido un error inesperado",
+        variant: "destructive"
+      });
+    }
+  };
   
   const toggleSound = () => {
     const newVolume = soundSettings.masterVolume > 0 ? 0 : 0.5;
@@ -184,7 +201,7 @@ const Index = () => {
               
               <PointsDisplay 
                 points={points}
-                isLoading={isLoading}
+                isLoading={isLoadingUserData}
               />
             </div>
           </div>
