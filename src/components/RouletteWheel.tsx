@@ -31,6 +31,7 @@ const RouletteWheel: React.FC<RouletteWheelProps> = ({
           height={size}
           viewBox={`0 0 ${size} ${size}`}
           className={`roulette-wheel transition-transform ${spinning ? 'spinning' : ''}`}
+          data-testid="roulette-wheel"
           style={{
             transform: `rotate(${spinAngle}deg)`,
             transition: spinning

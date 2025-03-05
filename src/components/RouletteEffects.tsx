@@ -21,6 +21,7 @@ const RouletteEffects: React.FC<RouletteEffectsProps> = ({ spinning, radius }) =
         style={{
           background: 'radial-gradient(circle, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 70%)',
         }}
+        data-testid="glow-effect"
       />
       
       {/* Center point */}
@@ -34,6 +35,7 @@ const RouletteEffects: React.FC<RouletteEffectsProps> = ({ spinning, radius }) =
           transform: 'translate(-50%, -50%)',
           border: '4px solid #fff',
         }}
+        data-testid="center-point"
       />
       
       {/* Pointer */}
@@ -44,6 +46,7 @@ const RouletteEffects: React.FC<RouletteEffectsProps> = ({ spinning, radius }) =
           left: '50%',
           transform: 'translateX(-50%) translateY(-50%)',
         }}
+        data-testid="pointer"
       />
     </div>
   );

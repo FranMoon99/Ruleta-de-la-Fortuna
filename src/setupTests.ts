@@ -1,55 +1,36 @@
 
-// Mock IntersectionObserver for jest/vitest
-class MockIntersectionObserver {
-  readonly root: Element | null;
-  readonly rootMargin: string;
-  readonly thresholds: ReadonlyArray<number>;
-  
-  constructor() {
-    this.root = null;
-    this.rootMargin = "";
-    this.thresholds = [0];
-  }
-  
-  disconnect() {
-    return;
-  }
-  
-  observe() {
-    return;
-  }
-  
-  takeRecords() {
-    return [];
-  }
-  
-  unobserve() {
-    return;
-  }
-}
+import '@testing-library/jest-dom';
+import { expect, vi } from 'vitest';
+import { cleanup } from '@testing-library/react';
 
-global.IntersectionObserver = MockIntersectionObserver as unknown as typeof IntersectionObserver;
-
-// Mock localStorage
-const localStorageMock = (() => {
-  let store: Record<string, string> = {};
-  
-  return {
-    getItem: (key: string): string => {
-      return store[key] || null;
-    },
-    setItem: (key: string, value: string): void => {
-      store[key] = value.toString();
-    },
-    removeItem: (key: string): void => {
-      delete store[key];
-    },
-    clear: (): void => {
-      store = {};
-    }
-  };
-})();
-
-Object.defineProperty(window, 'localStorage', {
-  value: localStorageMock
+// Add matchMedia mock for tests
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: vi.fn().mockImplementation(query => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
 });
+
+// Mock IntersectionObserver
+global.IntersectionObserver = class IntersectionObserver {
+  constructor(callback) {
+    this.callback = callback;
+  }
+  observe() { return null; }
+  unobserve() { return null; }
+  disconnect() { return null; }
+};
+
+// Clean up after each test
+afterEach(() => {
+  cleanup();
+});
+
+// Additional test util setup can be added here

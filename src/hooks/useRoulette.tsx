@@ -6,7 +6,8 @@ import { useLocalStorage } from './useLocalStorage';
 import { useSoundEffects } from './useSoundEffects';
 import { SpinResult, SoundSettings, RouletteState, DEFAULT_SOUND_SETTINGS } from './useRouletteTypes';
 
-export { SpinResult, SoundSettings, RouletteState } from './useRouletteTypes';
+// Fix re-exports with 'export type'
+export type { SpinResult, SoundSettings, RouletteState } from './useRouletteTypes';
 
 export const useRoulette = () => {
   const [prizes, setPrizes] = useState<Prize[]>(() => defaultPrizes);
