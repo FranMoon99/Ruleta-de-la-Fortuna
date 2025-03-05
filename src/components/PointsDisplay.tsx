@@ -1,8 +1,7 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getUserPoints, getLeaderboard } from '@/integrations/supabase/client';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts';
 
 interface PointsDisplayProps {
@@ -17,35 +16,17 @@ interface LeaderboardItem {
   totalPoints: number;
 }
 
-const PointsDisplay: React.FC<PointsDisplayProps> = ({ points, userId, isLoading = false }) => {
-  const [leaderboard, setLeaderboard] = useState<LeaderboardItem[]>([]);
-  const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
+// Sample leaderboard data since authentication is disabled
+const sampleLeaderboard: LeaderboardItem[] = [
+  { username: 'usuario1', displayName: 'Jugador 1', totalPoints: 5200 },
+  { username: 'usuario2', displayName: 'Jugador 2', totalPoints: 4800 },
+  { username: 'usuario3', displayName: 'Jugador 3', totalPoints: 3700 },
+  { username: 'usuario4', displayName: 'Jugador 4', totalPoints: 2900 },
+  { username: 'usuario5', displayName: 'Jugador 5', totalPoints: 2100 },
+];
 
-  useEffect(() => {
-    const loadLeaderboard = async () => {
-      if (!userId) return;
-      
-      setLoadingLeaderboard(true);
-      try {
-        const data = await getLeaderboard(5);
-        
-        // Transform the data for the chart
-        const formattedData = data.map(item => ({
-          username: item.username || 'Usuario',
-          displayName: item.display_name || item.username || 'Usuario',
-          totalPoints: item.total_points
-        }));
-        
-        setLeaderboard(formattedData);
-      } catch (error) {
-        console.error('Error loading leaderboard:', error);
-      } finally {
-        setLoadingLeaderboard(false);
-      }
-    };
-    
-    loadLeaderboard();
-  }, [userId, points]);
+const PointsDisplay: React.FC<PointsDisplayProps> = ({ points, isLoading = false }) => {
+  const [leaderboard] = useState<LeaderboardItem[]>(sampleLeaderboard);
 
   const pointsLevel = Math.floor(points / 1000) + 1;
   const progressToNextLevel = (points % 1000) / 10; // 0-100 scale
@@ -83,33 +64,25 @@ const PointsDisplay: React.FC<PointsDisplayProps> = ({ points, userId, isLoading
               </div>
             </div>
             
-            {loadingLeaderboard ? (
-              <Skeleton className="h-32 w-full" />
-            ) : leaderboard.length > 0 ? (
-              <div>
-                <h3 className="text-sm font-medium mb-2">Clasificación</h3>
-                <ResponsiveContainer width="100%" height={180}>
-                  <BarChart data={leaderboard}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis 
-                      dataKey="displayName" 
-                      tick={{ fontSize: 12 }}
-                      tickFormatter={(value) => value.substring(0, 8) + (value.length > 8 ? '...' : '')}
-                    />
-                    <YAxis />
-                    <Tooltip 
-                      formatter={(value, name) => [value, 'Puntos']}
-                      labelFormatter={(value) => `Usuario: ${value}`}
-                    />
-                    <Bar dataKey="totalPoints" fill="var(--primary)" name="Puntos" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <p className="text-center text-muted-foreground py-4">
-                No hay datos de clasificación disponibles
-              </p>
-            )}
+            <div>
+              <h3 className="text-sm font-medium mb-2">Clasificación (Demo)</h3>
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={leaderboard}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis 
+                    dataKey="displayName" 
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(value) => value.substring(0, 8) + (value.length > 8 ? '...' : '')}
+                  />
+                  <YAxis />
+                  <Tooltip 
+                    formatter={(value, name) => [value, 'Puntos']}
+                    labelFormatter={(value) => `Usuario: ${value}`}
+                  />
+                  <Bar dataKey="totalPoints" fill="var(--primary)" name="Puntos" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         )}
       </CardContent>

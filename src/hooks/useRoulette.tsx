@@ -1,18 +1,7 @@
+
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Prize, defaultPrizes, generateRandomAngle, calculatePrizeIndex, loadCustomPrizes, saveCustomPrizes } from '../utils/prizes';
+import { Prize, defaultPrizes, generateRandomAngle, calculatePrizeIndex, loadCustomPrizes, saveCustomPrizes, saveSpinResult, loadUserPoints } from '../utils/prizes';
 import { playSpinSound, playWinSound, getRandomSpinDuration } from '../utils/animations';
-import { 
-  supabase, 
-  saveSpinResult, 
-  getUserPoints, 
-  getUserSpinHistory, 
-  saveUserSettings, 
-  getUserSettings, 
-  syncUserStats, 
-  getUserStats,
-  getUserProfile,
-  UserProfile
-} from '@/integrations/supabase/client';
 
 export interface SpinResult {
   prize: Prize;
@@ -33,7 +22,6 @@ export interface RouletteState {
   history: SpinResult[];
   spinAngle: number;
   spinDuration: number;
-  user: any | null;
   statistics: Record<string, number>;
   soundSettings: SoundSettings;
   customMode: boolean;
@@ -56,7 +44,6 @@ export const useRoulette = () => {
   const [history, setHistory] = useState<SpinResult[]>([]);
   const [spinAngle, setSpinAngle] = useState(0);
   const [spinDuration, setSpinDuration] = useState(5);
-  const [user, setUser] = useState<any | null>(null);
   const [statistics, setStatistics] = useState<Record<string, number>>({});
   const [soundSettings, setSoundSettings] = useState<SoundSettings>(() => {
     const saved = localStorage.getItem('roulette-sound-settings');
@@ -66,7 +53,6 @@ export const useRoulette = () => {
   const [points, setPoints] = useState(0);
   const [totalSpins, setTotalSpins] = useState(0);
   const [isLoadingUserData, setIsLoadingUserData] = useState(false);
-  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const resultTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -82,75 +68,39 @@ export const useRoulette = () => {
     };
     
     loadPrizes();
-  }, [user?.id]);
-  
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (session?.user) {
-          setUser(session.user);
-        } else {
-          setUser(null);
-          setPoints(0);
-          setTotalSpins(0);
-        }
-      }
-    );
-    
-    const checkCurrentSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUser(session.user);
-      }
-    };
-    
-    checkCurrentSession();
-    
-    return () => {
-      subscription.unsubscribe();
-    };
   }, []);
   
   useEffect(() => {
     const fetchUserData = async () => {
-      if (!user) return;
-      
       setIsLoadingUserData(true);
       
       try {
-        const userPoints = await getUserPoints(user.id);
+        // Load points from localStorage
+        const userPoints = await loadUserPoints();
         setPoints(userPoints);
         
-        const profileData = await getUserProfile(user.id);
+        // Load totalSpins from localStorage
+        setTotalSpins(parseInt(localStorage.getItem('roulette-total-spins') || '0'));
         
-        if (profileData) {
-          setTotalSpins(profileData.total_spins || 0);
-        }
-        
-        const historyData = await getUserSpinHistory(user.id);
-        
-        if (historyData && Array.isArray(historyData) && historyData.length > 0) {
-          const spinResults: SpinResult[] = historyData.map((item) => {
-            const prize = prizes.find(p => p.id === item.premio_id) || {
-              id: item.premio_id || 'unknown',
+        // Load history from localStorage
+        const historyData = JSON.parse(localStorage.getItem('roulette-history') || '[]');
+        if (historyData.length > 0) {
+          const spinResults: SpinResult[] = historyData.map((item: any) => {
+            const prize = prizes.find(p => p.id === item.prizeId) || {
+              id: item.prizeId || 'unknown',
               name: 'Premio desconocido',
-              value: item.points_earned || 0,
+              value: item.points || 0,
               color: 'roulette-gray'
             };
             
             return {
               prize,
-              timestamp: new Date(item.fecha)
+              timestamp: new Date(item.timestamp)
             };
           });
           
           setHistory(spinResults);
         }
-        
-        await syncSettingsFromCloud();
-        
-        await syncStatsFromCloud();
-        
       } catch (error) {
         console.error('Error loading user data:', error);
       } finally {
@@ -159,7 +109,7 @@ export const useRoulette = () => {
     };
     
     fetchUserData();
-  }, [user, prizes]);
+  }, [prizes]);
   
   useEffect(() => {
     const savedStats = localStorage.getItem('roulette-statistics');
@@ -170,67 +120,7 @@ export const useRoulette = () => {
   
   useEffect(() => {
     localStorage.setItem('roulette-sound-settings', JSON.stringify(soundSettings));
-    
-    if (user && lastSyncTime) {
-      const timeSinceLastSync = new Date().getTime() - lastSyncTime.getTime();
-      if (timeSinceLastSync > 60000) {
-        syncSettingsToCloud();
-      }
-    }
-  }, [soundSettings, user, lastSyncTime]);
-  
-  const syncSettingsToCloud = async () => {
-    if (!user) return;
-    
-    try {
-      await saveUserSettings(user.id, {
-        soundSettings,
-        favoriteColor: 'var(--primary)'
-      });
-      setLastSyncTime(new Date());
-    } catch (error) {
-      console.error('Error syncing settings:', error);
-    }
-  };
-  
-  const syncSettingsFromCloud = async () => {
-    if (!user) return;
-    
-    try {
-      const settings = await getUserSettings(user.id);
-      if (settings && settings.soundSettings) {
-        setSoundSettings(settings.soundSettings);
-        localStorage.setItem('roulette-sound-settings', JSON.stringify(settings.soundSettings));
-      }
-      setLastSyncTime(new Date());
-    } catch (error) {
-      console.error('Error loading settings from cloud:', error);
-    }
-  };
-  
-  const syncStatsToCloud = async () => {
-    if (!user) return;
-    
-    try {
-      await syncUserStats(user.id, statistics);
-    } catch (error) {
-      console.error('Error syncing stats:', error);
-    }
-  };
-  
-  const syncStatsFromCloud = async () => {
-    if (!user) return;
-    
-    try {
-      const cloudStats = await getUserStats(user.id);
-      if (Object.keys(cloudStats).length > 0) {
-        setStatistics(cloudStats);
-        localStorage.setItem('roulette-statistics', JSON.stringify(cloudStats));
-      }
-    } catch (error) {
-      console.error('Error loading stats from cloud:', error);
-    }
-  };
+  }, [soundSettings]);
   
   const spin = useCallback(async () => {
     if (spinning) return;
@@ -288,19 +178,16 @@ export const useRoulette = () => {
         winAudio.play();
       }
       
-      if (user) {
-        try {
-          await saveSpinResult(user.id, prize.id, prize.value);
-          setPoints(prev => prev + prize.value);
-          setTotalSpins(prev => prev + 1);
-          
-          syncStatsToCloud();
-        } catch (error) {
-          console.error("Error saving result:", error);
-        }
+      try {
+        await saveSpinResult(prize.id);
+        setPoints(prev => prev + prize.value);
+        setTotalSpins(prev => prev + 1);
+        localStorage.setItem('roulette-total-spins', String(parseInt(localStorage.getItem('roulette-total-spins') || '0') + 1));
+      } catch (error) {
+        console.error("Error saving result:", error);
       }
     }, duration * 1000 + 500);
-  }, [prizes, spinning, user, soundSettings]);
+  }, [prizes, spinning, soundSettings]);
   
   const updatePrizes = useCallback((newPrizes: Prize[]) => {
     setPrizes(newPrizes);
@@ -310,16 +197,13 @@ export const useRoulette = () => {
   const resetHistory = useCallback(() => {
     setHistory([]);
     setCurrentResult(null);
+    localStorage.removeItem('roulette-history');
   }, []);
   
   const resetStatistics = useCallback(() => {
     setStatistics({});
     localStorage.removeItem('roulette-statistics');
-    
-    if (user) {
-      syncUserStats(user.id, {});
-    }
-  }, [user]);
+  }, []);
   
   const updateSoundSettings = useCallback((newSettings: Partial<SoundSettings>) => {
     setSoundSettings(prev => ({ ...prev, ...newSettings }));
@@ -331,6 +215,7 @@ export const useRoulette = () => {
   
   const updatePoints = useCallback((newPoints: number) => {
     setPoints(newPoints);
+    localStorage.setItem('roulette-points', String(newPoints));
   }, []);
   
   useEffect(() => {
@@ -351,7 +236,6 @@ export const useRoulette = () => {
     history,
     spinAngle,
     spinDuration,
-    user,
     statistics,
     soundSettings,
     customMode,
@@ -364,10 +248,6 @@ export const useRoulette = () => {
     resetStatistics,
     updateSoundSettings,
     toggleCustomMode,
-    updatePoints,
-    syncSettingsToCloud,
-    syncSettingsFromCloud,
-    syncStatsToCloud,
-    syncStatsFromCloud
+    updatePoints
   };
 };

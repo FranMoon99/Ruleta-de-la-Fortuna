@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useRoulette } from '@/hooks/useRoulette';
@@ -33,7 +32,6 @@ const Index = () => {
     history,
     spinAngle,
     spinDuration,
-    user,
     statistics,
     soundSettings,
     customMode,
@@ -49,7 +47,6 @@ const Index = () => {
   } = useRoulette();
   
   const [showWinAnimation, setShowWinAnimation] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { toast } = useToast();
   
   useEffect(() => {
@@ -117,33 +114,13 @@ const Index = () => {
         <main className="container px-4 py-4 md:py-8 mx-auto flex-1 relative z-10">
           <div className="absolute top-0 right-0 z-20 flex items-center gap-2 p-2">
             <ThemeToggle className="mr-2" />
-            
-            {user ? (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="flex items-center gap-2"
-                onClick={handleLogout}
-              >
-                <UserIcon className="h-4 w-4" />
-                <span className="hidden md:inline">{user.email}</span>
-                <LogOut className="h-4 w-4" />
-              </Button>
-            ) : (
-              <Link to="/auth">
-                <Button variant="outline" size="sm" className="flex items-center gap-2">
-                  <UserIcon className="h-4 w-4" />
-                  <span className="hidden sm:inline">Iniciar sesión</span>
-                </Button>
-              </Link>
-            )}
           </div>
           
           {/* Mobile-friendly layout with adjustable columns */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8 xl:gap-12 mt-10 md:mt-0">
             <div className="lg:col-span-1 order-3 lg:order-1">
               <Tabs defaultValue="history" className="h-full">
-                <TabsList className="grid grid-cols-4 mb-4 w-full">
+                <TabsList className="grid grid-cols-3 mb-4 w-full">
                   <TabsTrigger value="history" className="flex items-center gap-1" onClick={() => soundSettings.clickSound && playClickSound(soundSettings.masterVolume)}>
                     <History className="h-4 w-4" />
                     <span className="hidden sm:inline">Historial</span>
@@ -151,10 +128,6 @@ const Index = () => {
                   <TabsTrigger value="statistics" className="flex items-center gap-1" onClick={() => soundSettings.clickSound && playClickSound(soundSettings.masterVolume)}>
                     <BarChart2 className="h-4 w-4" />
                     <span className="hidden sm:inline">Estadísticas</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="profile" className="flex items-center gap-1" onClick={() => soundSettings.clickSound && playClickSound(soundSettings.masterVolume)}>
-                    <User className="h-4 w-4" />
-                    <span className="hidden sm:inline">Perfil</span>
                   </TabsTrigger>
                   <TabsTrigger value="settings" className="flex items-center gap-1" onClick={() => soundSettings.clickSound && playClickSound(soundSettings.masterVolume)}>
                     <Sliders className="h-4 w-4" />
@@ -171,17 +144,6 @@ const Index = () => {
                     statistics={statistics}
                     prizes={prizes}
                     onReset={resetStatistics}
-                  />
-                </TabsContent>
-                
-                <TabsContent value="profile" className="h-full space-y-4">
-                  <UserProfile 
-                    user={user}
-                    points={points}
-                    totalSpins={totalSpins}
-                    favoriteColor={currentResult?.prize.color.startsWith('roulette-') 
-                      ? `var(--${currentResult.prize.color.replace('roulette-', '')})` 
-                      : currentResult?.prize.color}
                   />
                 </TabsContent>
                 
@@ -238,8 +200,8 @@ const Index = () => {
               <PrizeDisplay result={currentResult} showAnimation={showWinAnimation} />
               
               <PointsDisplay 
-                user={user}
                 points={points}
+                isLoading={isLoadingUserData}
               />
             </div>
           </div>

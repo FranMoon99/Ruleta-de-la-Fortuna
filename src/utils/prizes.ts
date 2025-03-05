@@ -1,3 +1,4 @@
+
 import { supabase, saveSpinResult as saveSpinResultToSupabase, getUserPoints } from "@/integrations/supabase/client";
 
 export interface Prize {
@@ -44,23 +45,13 @@ export const calculatePrizeIndex = (angle: number, segmentCount: number): number
 export const saveCustomPrizes = async (prizes: Prize[]): Promise<void> => {
   localStorage.setItem('roulette-prizes', JSON.stringify(prizes));
   
-  const { data: { session } } = await supabase.auth.getSession();
-  
-  if (session?.user) {
-    console.log("Sincronizando premios personalizados con Supabase...");
-  }
+  // Authentication functionality disabled
+  // No Supabase syncing here
 };
 
 export const loadCustomPrizes = async (): Promise<Prize[] | null> => {
-  const { data: { session } } = await supabase.auth.getSession();
-  
-  if (session?.user) {
-    try {
-      console.log("Intentando cargar premios personalizados desde Supabase...");
-    } catch (error) {
-      console.error("Error cargando premios desde Supabase:", error);
-    }
-  }
+  // Authentication functionality disabled
+  // No Supabase loading here
   
   const saved = localStorage.getItem('roulette-prizes');
   return saved ? JSON.parse(saved) : null;
@@ -68,17 +59,24 @@ export const loadCustomPrizes = async (): Promise<Prize[] | null> => {
 
 export const saveSpinResult = async (prizeId: string, userId?: string): Promise<boolean> => {
   try {
-    if (!userId) {
-      const { data: { session } } = await supabase.auth.getSession();
-      userId = session?.user?.id;
-    }
+    // Authentication functionality disabled
+    // Only use local storage
     
-    if (!userId) return false;
-    
+    const history = JSON.parse(localStorage.getItem('roulette-history') || '[]');
     const prize = defaultPrizes.find(p => p.id === prizeId);
-    const points = prize ? prize.value : 0;
     
-    await saveSpinResultToSupabase(userId, prizeId, points);
+    history.unshift({
+      prizeId,
+      points: prize ? prize.value : 0,
+      timestamp: new Date().toISOString()
+    });
+    
+    localStorage.setItem('roulette-history', JSON.stringify(history.slice(0, 30)));
+    
+    // Update local points
+    const currentPoints = parseInt(localStorage.getItem('roulette-points') || '0');
+    localStorage.setItem('roulette-points', String(currentPoints + (prize ? prize.value : 0)));
+    
     return true;
   } catch (error) {
     console.error('Error al guardar el resultado:', error);
@@ -87,35 +85,19 @@ export const saveSpinResult = async (prizeId: string, userId?: string): Promise<
 };
 
 export const loadSpinHistory = async () => {
-  const { data: { session } } = await supabase.auth.getSession();
+  // Authentication functionality disabled
+  // Only use local storage
   
-  if (!session?.user) {
-    return [];
-  }
-  
-  const { data, error } = await supabase.rpc('get_user_spin_history', {
-    user_id_param: session.user.id,
-    limit_count: 30
-  });
-  
-  if (error) {
-    console.error('Error al cargar el historial:', error);
-    return [];
-  }
-  
-  return data || [];
+  const history = JSON.parse(localStorage.getItem('roulette-history') || '[]');
+  return history;
 };
 
 export const loadUserPoints = async (userId?: string): Promise<number> => {
   try {
-    if (!userId) {
-      const { data: { session } } = await supabase.auth.getSession();
-      userId = session?.user?.id;
-    }
+    // Authentication functionality disabled
+    // Only use local storage
     
-    if (!userId) return 0;
-    
-    return await getUserPoints(userId);
+    return parseInt(localStorage.getItem('roulette-points') || '0');
   } catch (error) {
     console.error('Error al cargar los puntos:', error);
     return 0;
