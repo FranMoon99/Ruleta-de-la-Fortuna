@@ -1,41 +1,12 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Prize, defaultPrizes, generateRandomAngle, calculatePrizeIndex, loadCustomPrizes, saveCustomPrizes, saveSpinResult, loadUserPoints } from '../utils/prizes';
-import { playSpinSound, playWinSound, getRandomSpinDuration } from '../utils/animations';
+import { Prize, defaultPrizes, generateRandomAngle, calculatePrizeIndex, saveSpinResult, loadUserPoints } from '../utils/prizes';
+import { getRandomSpinDuration } from '../utils/animations';
+import { useLocalStorage } from './useLocalStorage';
+import { useSoundEffects } from './useSoundEffects';
+import { SpinResult, SoundSettings, RouletteState, DEFAULT_SOUND_SETTINGS } from './useRouletteTypes';
 
-export interface SpinResult {
-  prize: Prize;
-  timestamp: Date;
-}
-
-export interface SoundSettings {
-  masterVolume: number;
-  spinSound: boolean;
-  winSound: boolean;
-  clickSound: boolean;
-}
-
-export interface RouletteState {
-  prizes: Prize[];
-  spinning: boolean;
-  currentResult: SpinResult | null;
-  history: SpinResult[];
-  spinAngle: number;
-  spinDuration: number;
-  statistics: Record<string, number>;
-  soundSettings: SoundSettings;
-  customMode: boolean;
-  points: number;
-  totalSpins: number;
-  isLoadingUserData: boolean;
-}
-
-const DEFAULT_SOUND_SETTINGS: SoundSettings = {
-  masterVolume: 0.5,
-  spinSound: true,
-  winSound: true,
-  clickSound: true
-};
+export { SpinResult, SoundSettings, RouletteState } from './useRouletteTypes';
 
 export const useRoulette = () => {
   const [prizes, setPrizes] = useState<Prize[]>(() => defaultPrizes);
@@ -44,24 +15,21 @@ export const useRoulette = () => {
   const [history, setHistory] = useState<SpinResult[]>([]);
   const [spinAngle, setSpinAngle] = useState(0);
   const [spinDuration, setSpinDuration] = useState(5);
-  const [statistics, setStatistics] = useState<Record<string, number>>({});
-  const [soundSettings, setSoundSettings] = useState<SoundSettings>(() => {
-    const saved = localStorage.getItem('roulette-sound-settings');
-    return saved ? JSON.parse(saved) : DEFAULT_SOUND_SETTINGS;
-  });
+  const [statistics, setStatistics] = useLocalStorage<Record<string, number>>('roulette-statistics', {});
+  const [soundSettings, setSoundSettings] = useLocalStorage<SoundSettings>('roulette-sound-settings', DEFAULT_SOUND_SETTINGS);
   const [customMode, setCustomMode] = useState(false);
   const [points, setPoints] = useState(0);
   const [totalSpins, setTotalSpins] = useState(0);
   const [isLoadingUserData, setIsLoadingUserData] = useState(false);
   
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const resultTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const { audioRef, playRouletteSpinSound, playRouletteWinSound, cleanupSounds } = useSoundEffects(soundSettings);
   
   useEffect(() => {
     const loadPrizes = async () => {
-      const customPrizes = await loadCustomPrizes();
-      if (customPrizes) {
-        setPrizes(customPrizes);
+      const savedPrizes = localStorage.getItem('roulette-prizes');
+      if (savedPrizes) {
+        setPrizes(JSON.parse(savedPrizes));
       } else {
         setPrizes(defaultPrizes);
       }
@@ -111,24 +79,8 @@ export const useRoulette = () => {
     fetchUserData();
   }, [prizes]);
   
-  useEffect(() => {
-    const savedStats = localStorage.getItem('roulette-statistics');
-    if (savedStats) {
-      setStatistics(JSON.parse(savedStats));
-    }
-  }, []);
-  
-  useEffect(() => {
-    localStorage.setItem('roulette-sound-settings', JSON.stringify(soundSettings));
-  }, [soundSettings]);
-  
   const spin = useCallback(async () => {
     if (spinning) return;
-    
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
     
     if (resultTimeoutRef.current) {
       clearTimeout(resultTimeoutRef.current);
@@ -142,12 +94,7 @@ export const useRoulette = () => {
     const duration = getRandomSpinDuration();
     setSpinDuration(duration);
     
-    if (soundSettings.spinSound) {
-      audioRef.current = playSpinSound();
-      if (audioRef.current) {
-        audioRef.current.volume = soundSettings.masterVolume;
-      }
-    }
+    playRouletteSpinSound();
     
     resultTimeoutRef.current = setTimeout(async () => {
       const resultIndex = calculatePrizeIndex(angle, prizes.length);
@@ -161,9 +108,6 @@ export const useRoulette = () => {
       setStatistics(prevStats => {
         const newStats = { ...prevStats };
         newStats[prize.id] = (newStats[prize.id] || 0) + 1;
-        
-        localStorage.setItem('roulette-statistics', JSON.stringify(newStats));
-        
         return newStats;
       });
       
@@ -171,12 +115,7 @@ export const useRoulette = () => {
       setHistory(prev => [result, ...prev].slice(0, 30));
       setSpinning(false);
       
-      if (soundSettings.winSound) {
-        const winAudio = new Audio();
-        winAudio.src = 'https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3';
-        winAudio.volume = soundSettings.masterVolume;
-        winAudio.play();
-      }
+      playRouletteWinSound();
       
       try {
         await saveSpinResult(prize.id);
@@ -187,11 +126,11 @@ export const useRoulette = () => {
         console.error("Error saving result:", error);
       }
     }, duration * 1000 + 500);
-  }, [prizes, spinning, soundSettings]);
+  }, [prizes, spinning, playRouletteSpinSound, playRouletteWinSound, setStatistics]);
   
   const updatePrizes = useCallback((newPrizes: Prize[]) => {
     setPrizes(newPrizes);
-    saveCustomPrizes(newPrizes);
+    localStorage.setItem('roulette-prizes', JSON.stringify(newPrizes));
   }, []);
   
   const resetHistory = useCallback(() => {
@@ -202,12 +141,11 @@ export const useRoulette = () => {
   
   const resetStatistics = useCallback(() => {
     setStatistics({});
-    localStorage.removeItem('roulette-statistics');
-  }, []);
+  }, [setStatistics]);
   
   const updateSoundSettings = useCallback((newSettings: Partial<SoundSettings>) => {
     setSoundSettings(prev => ({ ...prev, ...newSettings }));
-  }, []);
+  }, [setSoundSettings]);
   
   const toggleCustomMode = useCallback(() => {
     setCustomMode(prev => !prev);
@@ -220,14 +158,12 @@ export const useRoulette = () => {
   
   useEffect(() => {
     return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-      }
+      cleanupSounds();
       if (resultTimeoutRef.current) {
         clearTimeout(resultTimeoutRef.current);
       }
     };
-  }, []);
+  }, [cleanupSounds]);
   
   return {
     prizes,
