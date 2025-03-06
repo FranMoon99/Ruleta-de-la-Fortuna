@@ -48,7 +48,6 @@ const AdBanner = ({ className = "", format = "horizontal", slot = "1234567890" }
     <div className={`ad-container my-4 mx-auto ${className}`}>
       <div className="text-xs text-muted-foreground mb-1 text-center">Publicidad</div>
       <ins
-        ref={adRef}
         className="adsbygoogle"
         style={adStyle}
         data-ad-client="ca-pub-XXXXXXXXXXXXXXXX" // Reemplazar con tu ID de cliente
