@@ -23,6 +23,9 @@ import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/components/ui/use-toast';
 import { defaultPrizes } from '@/utils/prizes';
 import { ThemeProvider } from '@/hooks/useTheme';
+import AdBanner from '@/components/AdBanner';
+import InterstitialAd from '@/components/InterstitialAd';
+import { useAdManager } from '@/hooks/useAdManager';
 
 const Index = () => {
   const {
@@ -48,6 +51,7 @@ const Index = () => {
   
   const [showWinAnimation, setShowWinAnimation] = useState(false);
   const { toast } = useToast();
+  const { showInterstitial, trackAction, closeInterstitial } = useAdManager({ interstitialFrequency: 5 });
   
   useEffect(() => {
     if (!spinning && currentResult) {
@@ -100,6 +104,11 @@ const Index = () => {
     }
   };
   
+  const handleSpin = () => {
+    spin();
+    trackAction();
+  };
+  
   return (
     <ThemeProvider soundSettings={soundSettings}>
       <div className="min-h-screen flex flex-col bg-gradient-to-br from-background via-background to-secondary/30 dark:from-slate-900 dark:via-slate-900 dark:to-primary/10">
@@ -111,12 +120,17 @@ const Index = () => {
         
         <Header />
         
+        {showInterstitial && (
+          <InterstitialAd onClose={closeInterstitial} />
+        )}
+        
         <main className="container px-4 py-4 md:py-8 mx-auto flex-1 relative z-10">
           <div className="absolute top-0 right-0 z-20 flex items-center gap-2 p-2">
             <ThemeToggle className="mr-2" />
           </div>
           
-          {/* Mobile-friendly layout with adjustable columns */}
+          <AdBanner format="horizontal" className="mb-6" />
+          
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8 xl:gap-12 mt-10 md:mt-0">
             <div className="lg:col-span-1 order-3 lg:order-1">
               <Tabs defaultValue="history" className="h-full">
@@ -161,11 +175,14 @@ const Index = () => {
                   />
                 </TabsContent>
               </Tabs>
+              
+              <div className="mt-4">
+                <AdBanner format="rectangle" />
+              </div>
             </div>
             
             <div className="lg:col-span-1 order-1 lg:order-2 flex flex-col items-center">
               <div className="mb-4 md:mb-8 relative">
-                {/* Ruleta responsive: más pequeña en móviles */}
                 <div className="transform scale-75 md:scale-90 lg:scale-100 origin-top">
                   <RouletteWheel 
                     prizes={prizes} 
@@ -190,7 +207,7 @@ const Index = () => {
               </div>
               
               <div className="w-full max-w-xs flex flex-col items-center gap-4 md:gap-6">
-                <SpinButton onSpin={spin} disabled={spinning} />
+                <SpinButton onSpin={handleSpin} disabled={spinning} />
                 
                 <PrizeCustomizer prizes={prizes} onUpdate={updatePrizes} />
               </div>
@@ -203,8 +220,14 @@ const Index = () => {
                 points={points}
                 isLoading={isLoadingUserData}
               />
+              
+              <div className="mt-6">
+                <AdBanner format="rectangle" slot="5678901234" />
+              </div>
             </div>
           </div>
+          
+          <AdBanner format="horizontal" className="mt-8" />
         </main>
         
         <Footer />
