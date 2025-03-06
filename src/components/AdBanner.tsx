@@ -22,9 +22,7 @@ const AdBanner = ({ className = "", format = "horizontal", slot = "1234567890" }
     
     // Intentar mostrar el anuncio cuando el componente se monte
     try {
-      if (adRef.current) {
-        (window.adsbygoogle = window.adsbygoogle || []).push({});
-      }
+      (window.adsbygoogle = window.adsbygoogle || []).push({});
     } catch (error) {
       console.error('Error al cargar el anuncio:', error);
     }
@@ -45,7 +43,7 @@ const AdBanner = ({ className = "", format = "horizontal", slot = "1234567890" }
   }
   
   return (
-    <div className={`ad-container my-4 mx-auto ${className}`}>
+    <div className={`ad-container my-4 mx-auto ${className}`} ref={adRef}>
       <div className="text-xs text-muted-foreground mb-1 text-center">Publicidad</div>
       <ins
         className="adsbygoogle"
